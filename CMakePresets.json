@@ -1,0 +1,44 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": { "major": 3, "minor": 25, "patch": 0 },
+  "configurePresets": [
+    {
+      "name": "win-msvc",
+      "displayName": "Windows x64 / MSVC VS2022 (static /MT runtime)",
+      "description": "Windows 10 x64, Visual Studio 17 2022 generator, statically linked CRT (/MT)",
+      "generator": "Visual Studio 17 2022",
+      "architecture": { "value": "x64", "strategy": "set" },
+      "binaryDir": "${sourceDir}/build/win-msvc",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" },
+      "cacheVariables": {
+        "CMAKE_MSVC_RUNTIME_LIBRARY": "MultiThreaded$<$<CONFIG:Debug>:Debug>"
+      }
+    },
+    {
+      "name": "linux-gcc",
+      "displayName": "Linux x64 / GCC (reserved for M7)",
+      "description": "Placeholder preset for the future Debian/Arch/RHEL backend",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build/linux-gcc",
+      "hidden": true,
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux" },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "win-msvc-release",
+      "displayName": "bootroll Release (x64)",
+      "configurePreset": "win-msvc",
+      "configuration": "Release"
+    },
+    {
+      "name": "win-msvc-debug",
+      "displayName": "bootroll Debug (x64)",
+      "configurePreset": "win-msvc",
+      "configuration": "Debug"
+    }
+  ]
+}

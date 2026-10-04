@@ -1,0 +1,6 @@
+[submodule "third_party/imgui"]
+	path = third_party/imgui
+	url = https://github.com/ocornut/imgui.git
+[submodule "third_party/tinygettext"]
+	path = third_party/tinygettext
+	url = https://github.com/tinygettext/tinygettext.git

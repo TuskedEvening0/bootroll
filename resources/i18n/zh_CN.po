@@ -1,0 +1,981 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: bootroll 0.1.0\n"
+"POT-Creation-Date: 2026-10-04 12:00+0800\n"
+"PO-Revision-Date: 2026-10-04 12:00+0800\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Language: zh_CN\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+msgid "Target disk:"
+msgstr "目标磁盘："
+
+msgid "Refresh"
+msgstr "刷新"
+
+msgid "Language:"
+msgstr "语言："
+
+msgid "No disk detected."
+msgstr "未检测到磁盘。"
+
+msgid "Model"
+msgstr "型号"
+
+msgid "Bus"
+msgstr "总线"
+
+msgid "Sector size"
+msgstr "扇区大小"
+
+msgid "Size"
+msgstr "容量"
+
+msgid "Partition style"
+msgstr "分区表类型"
+
+msgid "GPT"
+msgstr "GPT"
+
+msgid "MBR"
+msgstr "MBR"
+
+msgid "Unknown"
+msgstr "未知"
+
+msgid "No."
+msgstr "序号"
+
+msgid "Active"
+msgstr "活动"
+
+msgid "Hidden"
+msgstr "隐藏"
+
+msgid "Type"
+msgstr "类型"
+
+msgid "Letter"
+msgstr "盘符"
+
+msgid "Label"
+msgstr "卷标"
+
+msgid "Filesystem"
+msgstr "文件系统"
+
+msgid "BCD Edit"
+msgstr "BCD 编辑"
+
+msgid "Disk Info"
+msgstr "磁盘信息"
+
+msgid "Process MBR"
+msgstr "主引导记录"
+
+msgid "Process PBR"
+msgstr "分区引导记录"
+
+msgid "Master Boot Record"
+msgstr "主引导记录"
+
+msgid "Partition Boot Record"
+msgstr "分区引导记录"
+
+msgid "Grub4DOS"
+msgstr "Grub4DOS"
+
+msgid "Partition Manager"
+msgstr "分区管理"
+
+msgid "Sector Editor"
+msgstr "扇区编辑"
+
+msgid "About"
+msgstr "关于"
+
+msgid "This feature is not implemented yet."
+msgstr "此功能尚未实现。"
+
+msgid "A boot configuration utility for Windows, rewritten with Dear ImGui + C++."
+msgstr "基于 Dear ImGui + C++ 重写的 Windows 引导配置工具。"
+
+msgid ""
+"Behavioral spec follows BOOTICE v1.3.3.2 (by Pauly, www.ipauly.com). This is an "
+"independent clean-room reimplementation; no original code, data or resources "
+"from BOOTICE are included."
+msgstr ""
+"行为规格参照 BOOTICE v1.3.3.2（Pauly，www.ipauly.com）。本项目为独立的干净室"
+"重实现，不包含任何来自 BOOTICE 的原始代码、数据或资源。"
+
+msgid ""
+"Third-party components: Dear ImGui (MIT), tinygettext (Zlib), "
+"Noto Sans SC (SIL OFL 1.1), GRUB4DOS / WEE / Syslinux (GPLv2, unmodified "
+"prebuilt binaries). See resources/licenses/THIRD_PARTY.md."
+msgstr ""
+"第三方组件：Dear ImGui（MIT）、tinygettext（Zlib）、Noto Sans SC（SIL OFL "
+"1.1）、GRUB4DOS / WEE / Syslinux（GPLv2，未修改的预编译二进制）。详见 "
+"resources/licenses/THIRD_PARTY.md。"
+
+msgid "Full license texts:"
+msgstr "许可全文："
+
+msgid "Firmware"
+msgstr "固件类型"
+
+msgid "Elevated"
+msgstr "管理员权限"
+
+msgid "Yes"
+msgstr "是"
+
+msgid "No"
+msgstr "否"
+
+msgid "BCD file:"
+msgstr "BCD 文件："
+
+msgid "Open"
+msgstr "打开"
+
+msgid "Save"
+msgstr "保存"
+
+msgid "New"
+msgstr "新建"
+
+msgid "No file specified."
+msgstr "未指定文件。"
+
+msgid "Unsaved changes"
+msgstr "有未保存的更改"
+
+msgid "No boot manager object in this store."
+msgstr "此 BCD 中没有 boot manager 对象。"
+
+msgid "Timeout (s)"
+msgstr "超时（秒）"
+
+msgid "Display boot menu"
+msgstr "显示启动菜单"
+
+msgid "No error UI"
+msgstr "错误时不显示界面"
+
+msgid "(none)"
+msgstr "（无）"
+
+msgid "Default entry"
+msgstr "默认启动项"
+
+msgid "Entries"
+msgstr "启动条目"
+
+msgid "Description"
+msgstr "描述"
+
+msgid "Path"
+msgstr "路径"
+
+msgid "GUID"
+msgstr "GUID"
+
+msgid "New entry description"
+msgstr "新条目描述"
+
+msgid "Add"
+msgstr "添加"
+
+msgid "Set as default"
+msgstr "设为默认"
+
+msgid "Delete"
+msgstr "删除"
+
+msgid "Delete this entry?"
+msgstr "删除此条目？"
+
+msgid "OK"
+msgstr "确定"
+
+msgid "Cancel"
+msgstr "取消"
+
+msgid "Entry description is empty."
+msgstr "条目描述为空。"
+
+# --- M2: BCD mode sub-tabs ---------------------------------------------------
+msgid "Easy"
+msgstr "简易"
+
+msgid "Professional"
+msgstr "专业"
+
+# --- M2: professional element editor ----------------------------------------
+msgid "No store open. Open or create a BCD file above."
+msgstr "未打开存储。请先在上方打开或新建 BCD 文件。"
+
+msgid "Object"
+msgstr "对象"
+
+msgid "Element ID"
+msgstr "元素 ID"
+
+msgid "Name"
+msgstr "名称"
+
+msgid "Reg type"
+msgstr "注册表类型"
+
+msgid "Value"
+msgstr "值"
+
+msgid "No elements in this object."
+msgstr "此对象没有元素。"
+
+msgid "Edit element"
+msgstr "编辑元素"
+
+msgid "Hex bytes, e.g. \"0A 1B 2C\". Empty clears the element."
+msgstr "十六进制字节，如 \"0A 1B 2C\"。留空则删除该元素。"
+
+msgid "One GUID per line. Empty clears the element."
+msgstr "每行一个 GUID。留空则删除该元素。"
+
+msgid "Enabled"
+msgstr "启用"
+
+msgid "Decimal, or 0x prefix for hex."
+msgstr "十进制，或加 0x 前缀表示十六进制。"
+
+msgid "Apply"
+msgstr "应用"
+
+msgid "Raw"
+msgstr "原始"
+
+msgid "Delete this element?"
+msgstr "删除此元素？"
+
+msgid "Add / update element"
+msgstr "添加 / 更新元素"
+
+msgid "Invalid element ID."
+msgstr "无效的元素 ID。"
+
+msgid "Enter an element ID in hex (e.g. 12000002) to edit it."
+msgstr "输入十六进制元素 ID（如 12000002）进行编辑。"
+
+msgid "(will replace existing element)"
+msgstr "（将替换现有元素）"
+
+msgid "Add / Update"
+msgstr "添加 / 更新"
+
+msgid "Invalid hex input."
+msgstr "十六进制输入无效。"
+
+msgid "Invalid GUID list (one GUID per line)."
+msgstr "GUID 列表无效（每行一个 GUID）。"
+
+msgid "Invalid integer value."
+msgstr "整数值无效。"
+
+msgid "Value does not fit in 32 bits."
+msgstr "数值超出 32 位范围。"
+
+msgid "This value type cannot be edited as an integer; use raw mode."
+msgstr "该值类型不能按整数编辑，请使用原始模式。"
+
+# --- M2: element labels -------------------------------------------------------
+msgid "Device"
+msgstr "设备"
+
+msgid "Locale"
+msgstr "区域语言"
+
+msgid "Default object"
+msgstr "默认对象"
+
+msgid "Display order"
+msgstr "显示顺序"
+
+msgid "Tools display order"
+msgstr "工具显示顺序"
+
+msgid "Timeout"
+msgstr "超时"
+
+msgid "OS device"
+msgstr "系统分区"
+
+msgid "System root"
+msgstr "系统根目录"
+
+msgid "OS load options"
+msgstr "OS 加载选项"
+
+msgid "Kernel path"
+msgstr "内核路径"
+
+msgid "HAL path"
+msgstr "HAL 路径"
+
+msgid "NX policy"
+msgstr "NX 策略"
+
+msgid "PAE policy"
+msgstr "PAE 策略"
+
+msgid "Safe boot"
+msgstr "安全引导"
+
+msgid "Detect kernel and HAL"
+msgstr "检测内核与 HAL"
+
+msgid "Boot status policy: no error UI"
+msgstr "启动状态策略：无错误界面"
+
+# --- M2: object type labels ---------------------------------------------------
+msgid "Windows Boot Manager"
+msgstr "Windows 启动管理器"
+
+msgid "Windows Boot Loader"
+msgstr "Windows 启动加载器"
+
+msgid "Windows Memory Diagnostic"
+msgstr "Windows 内存诊断"
+
+msgid "Windows Resume Application"
+msgstr "Windows 恢复应用程序"
+
+msgid "Legacy Windows (NTLDR)"
+msgstr "旧版 Windows（NTLDR）"
+
+msgid "Legacy VHD Boot"
+msgstr "旧版 VHD 启动"
+
+msgid "Firmware Boot Manager"
+msgstr "固件启动管理器"
+
+msgid "Inherit (generic)"
+msgstr "继承（通用）"
+
+msgid "Inherit (custom)"
+msgstr "继承（自定义）"
+
+msgid "Inherit (debugger)"
+msgstr "继承（调试器）"
+
+msgid "Inherit (EMS)"
+msgstr "继承（EMS）"
+
+msgid "Inherit (device options)"
+msgstr "继承（设备选项）"
+
+# --- M3: Process MBR ---------------------------------------------------------
+msgid "Target:"
+msgstr "目标："
+
+msgid "Disk"
+msgstr "磁盘"
+
+msgid "Image file"
+msgstr "镜像文件"
+
+msgid "Open image file"
+msgstr "打开镜像文件"
+
+msgid "All files"
+msgstr "所有文件"
+
+msgid "Read sector 0"
+msgstr "读取 0 号扇区"
+
+msgid "Select a target to inspect its boot sector."
+msgstr "选择目标以查看其引导扇区。"
+
+msgid "Current MBR:"
+msgstr "当前 MBR："
+
+msgid "Install MBR:"
+msgstr "安装 MBR："
+
+msgid "Windows NT 6.x MBR (bootroll)"
+msgstr "Windows NT 6.x MBR（bootroll）"
+
+msgid "Grub4DOS MBR (grldr)"
+msgstr "Grub4DOS MBR（grldr）"
+
+msgid "WEE boot manager"
+msgstr "WEE 引导管理器"
+
+msgid "Syslinux MBR"
+msgstr "Syslinux MBR"
+
+msgid "For Windows Vista and later. Locates the active partition and hands control to it to load bootmgr. Works on both MBR and GPT disks."
+msgstr "适用于 Windows Vista 及更高版本。启动时查找活动分区并移交控制权以加载 bootmgr。MBR 与 GPT 磁盘均可使用。"
+
+msgid "Install"
+msgstr "安装"
+
+msgid "Cannot apply the MBR code to this target."
+msgstr "无法对该目标应用 MBR 代码。"
+
+msgid "Boot code not bundled in this build."
+msgstr "本构建未内置该引导代码。"
+
+msgid "Backup..."
+msgstr "备份..."
+
+msgid "Backup boot sector as"
+msgstr "引导扇区备份为"
+
+msgid "Boot sector files"
+msgstr "引导扇区文件"
+
+msgid "Saved: "
+msgstr "已保存："
+
+msgid "Cannot write backup file: "
+msgstr "无法写入备份文件："
+
+msgid "Cannot create backup directory: "
+msgstr "无法创建备份目录："
+
+msgid "Restore..."
+msgstr "恢复..."
+
+msgid "Open backup file"
+msgstr "打开备份文件"
+
+msgid "File is smaller than one sector."
+msgstr "文件小于一个扇区。"
+
+msgid "No disk selected."
+msgstr "未选择磁盘。"
+
+msgid "No partition selected."
+msgstr "未选择分区。"
+
+msgid "Cannot open file: "
+msgstr "无法打开文件："
+
+msgid "Install this MBR? The first 440 bytes of the target will be overwritten."
+msgstr "安装此 MBR？目标的前 440 字节将被覆盖。"
+
+msgid "Restore this backup? The first sector of the target will be overwritten."
+msgstr "恢复此备份？目标的第一扇区将被覆盖。"
+
+msgid "Automatic backup saved to"
+msgstr "自动备份已保存至"
+
+msgid "MBR installed."
+msgstr "MBR 安装完成。"
+
+msgid "Backup restored."
+msgstr "备份已恢复。"
+
+# --- M3: Process PBR ----------------------------------------------------------
+msgid "Partition %u  [%s]"
+msgstr "分区 %u  [%s]"
+
+msgid "This disk has no partitions."
+msgstr "该磁盘没有分区。"
+
+msgid "Read boot sector"
+msgstr "读取引导扇区"
+
+msgid "Current PBR:"
+msgstr "当前 PBR："
+
+msgid "Select a partition to inspect its boot sector."
+msgstr "选择分区以查看其引导扇区。"
+
+msgid "Install PBR:"
+msgstr "安装 PBR："
+
+msgid "From reference volume"
+msgstr "从参考卷提取"
+
+msgid "From file"
+msgstr "从文件"
+
+msgid "No reference volume selected."
+msgstr "未选择参考卷。"
+
+msgid "Open boot sector file"
+msgstr "打开引导扇区文件"
+
+msgid "Source is not a supported boot sector."
+msgstr "源不是受支持的引导扇区。"
+
+msgid "Source filesystem does not match the target partition ("
+msgstr "源文件系统与目标分区不匹配（"
+
+msgid "Cannot determine the target geometry."
+msgstr "无法确定目标几何参数。"
+
+msgid "Cannot patch the boot sector geometry."
+msgstr "无法回填引导扇区几何参数。"
+
+msgid "Install this boot sector? The first sector of the partition will be overwritten."
+msgstr "安装此引导扇区？分区的第一扇区将被覆盖。"
+
+msgid "Restore this backup? The first sector of the partition will be overwritten."
+msgstr "恢复此备份？分区的第一扇区将被覆盖。"
+
+msgid "Hidden sectors"
+msgstr "隐藏扇区数"
+
+msgid "Total sectors"
+msgstr "总扇区数"
+
+msgid "PBR installed."
+msgstr "PBR 安装完成。"
+
+# --- M4: Process MBR multi-sector installs ------------------------------------
+msgid "This boot code occupies the first %u sectors."
+msgstr "此引导代码占用前 %u 个扇区。"
+
+msgid "Install this MBR? The first %u sectors of the target will be overwritten."
+msgstr "安装此 MBR？目标的前 %u 个扇区将被覆盖。"
+
+msgid "Write failed: "
+msgstr "写入失败："
+
+# --- M4: Process PBR Grub4DOS ---------------------------------------------------
+msgid "Grub4DOS (grldr.pbr)"
+msgstr "Grub4DOS（grldr.pbr）"
+
+msgid "Install this boot sector? The first %u sectors of the partition will be overwritten."
+msgstr "安装此引导扇区？分区的前 %u 个扇区将被覆盖。"
+
+# --- M4: Grub4DOS page -----------------------------------------------------------
+msgid "Read"
+msgstr "读取"
+
+msgid "This partition has no drive letter."
+msgstr "此分区没有盘符。"
+
+msgid "Install Grub4DOS boot code:"
+msgstr "安装 Grub4DOS 引导代码："
+
+msgid "Master boot record (grldr.mbr)"
+msgstr "主引导记录（grldr.mbr）"
+
+msgid "Partition boot record (grldr.pbr)"
+msgstr "分区引导记录（grldr.pbr）"
+
+msgid "GRLDR file:"
+msgstr "GRLDR 文件："
+
+msgid "Write GRLDR to volume root"
+msgstr "写入 GRLDR 到卷根目录"
+
+msgid "menu.lst:"
+msgstr "menu.lst："
+
+msgid "Read from volume"
+msgstr "从卷读取"
+
+msgid "Write to volume"
+msgstr "写入卷"
+
+msgid "Load from file..."
+msgstr "从文件加载..."
+
+msgid "Save to file..."
+msgstr "保存到文件..."
+
+msgid "Open menu.lst"
+msgstr "打开 menu.lst"
+
+msgid "Save menu.lst as"
+msgstr "menu.lst 另存为"
+
+msgid "Install this boot sector? The first %u sectors of the target will be overwritten."
+msgstr "安装此引导扇区？目标的前 %u 个扇区将被覆盖。"
+
+msgid "Boot code installed."
+msgstr "引导代码安装完成。"
+
+# M4-3: partition manager
+msgid "Empty"
+msgstr "空白"
+
+msgid "Boot LBA"
+msgstr "起始 LBA"
+
+msgid "End LBA"
+msgstr "结束 LBA"
+
+msgid "Unwritten changes."
+msgstr "有未写入的更改。"
+
+msgid "GPT disk: the protective MBR is shown read-only."
+msgstr "GPT 磁盘：保护性 MBR 以只读方式显示。"
+
+msgid "Set active"
+msgstr "设为活动"
+
+msgid "Clear active"
+msgstr "取消活动"
+
+msgid "Hide"
+msgstr "隐藏"
+
+msgid "Unhide"
+msgstr "取消隐藏"
+
+msgid "Write to disk"
+msgstr "写入磁盘"
+
+msgid "Revert"
+msgstr "还原"
+
+msgid "Write the partition table? Sector 0 of the target will be overwritten."
+msgstr "要写入分区表吗？目标的 0 号扇区将被覆盖。"
+
+msgid "Partition table written."
+msgstr "分区表写入完成。"
+
+# Partition type names (combo list and table labels)
+msgid "NTFS / exFAT"
+msgstr "NTFS / exFAT"
+
+msgid "NTFS / exFAT (hidden)"
+msgstr "NTFS / exFAT（隐藏）"
+
+msgid "NTFS/exFAT"
+msgstr "NTFS / exFAT"
+
+msgid "NTFS/exFAT (hidden)"
+msgstr "NTFS / exFAT（隐藏）"
+
+msgid "FAT32"
+msgstr "FAT32"
+
+msgid "FAT32 (hidden)"
+msgstr "FAT32（隐藏）"
+
+msgid "FAT32 (LBA)"
+msgstr "FAT32 (LBA)"
+
+msgid "FAT32 (LBA, hidden)"
+msgstr "FAT32 (LBA, 隐藏)"
+
+msgid "FAT16"
+msgstr "FAT16"
+
+msgid "FAT16 (hidden)"
+msgstr "FAT16（隐藏）"
+
+msgid "FAT16 (LBA)"
+msgstr "FAT16 (LBA)"
+
+msgid "FAT16 (LBA, hidden)"
+msgstr "FAT16 (LBA, 隐藏)"
+
+msgid "FAT12"
+msgstr "FAT12"
+
+msgid "FAT12 (hidden)"
+msgstr "FAT12（隐藏）"
+
+msgid "Extended"
+msgstr "扩展分区"
+
+msgid "Extended (LBA)"
+msgstr "扩展分区 (LBA)"
+
+msgid "EISA / Diagnostic"
+msgstr "EISA / 诊断"
+
+msgid "NT Hidden / WinRE"
+msgstr "NT 隐藏 / WinRE"
+
+msgid "Linux"
+msgstr "Linux"
+
+msgid "Linux swap"
+msgstr "Linux 交换分区"
+
+msgid "Linux LVM"
+msgstr "Linux LVM"
+
+msgid "AtheOS"
+msgstr "AtheOS"
+
+msgid "FreeBSD"
+msgstr "FreeBSD"
+
+msgid "GPT protective"
+msgstr "GPT 保护分区"
+
+msgid "EFI System"
+msgstr "EFI 系统分区"
+
+# Boot code kind labels (MBR/PBR pages status readout)
+msgid "Windows NT 6.x MBR"
+msgstr "Windows NT 6.x MBR"
+
+msgid "Windows NT 5.x MBR"
+msgstr "Windows NT 5.x MBR"
+
+msgid "WEE boot manager MBR"
+msgstr "WEE 引导管理器 MBR"
+
+msgid "Plop Boot Manager MBR"
+msgstr "Plop 引导管理器 MBR"
+
+msgid "No boot signature"
+msgstr "无引导签名"
+
+msgid "Unknown code (signature only)"
+msgstr "未知代码（仅签名）"
+
+msgid "Not a boot sector"
+msgstr "不是引导扇区"
+
+msgid "NTFS boot sector"
+msgstr "NTFS 引导扇区"
+
+msgid "FAT12 boot sector"
+msgstr "FAT12 引导扇区"
+
+msgid "FAT16 boot sector"
+msgstr "FAT16 引导扇区"
+
+msgid "FAT32 boot sector"
+msgstr "FAT32 引导扇区"
+
+msgid "exFAT boot sector"
+msgstr "exFAT 引导扇区"
+
+msgid "Grub4DOS PBR"
+msgstr "Grub4DOS PBR"
+
+msgid "Unknown format"
+msgstr "未知格式"
+
+msgid "GPT protective MBR"
+msgstr "GPT 保护性 MBR"
+
+# M5: sector editor
+msgid "Sector LBA:"
+msgstr "扇区 LBA："
+
+msgid "Previous sector"
+msgstr "上一扇区"
+
+msgid "Next sector"
+msgstr "下一扇区"
+
+msgid "Goto"
+msgstr "跳转"
+
+msgid "Total sectors: %llu"
+msgstr "总扇区数：%llu"
+
+msgid "Unwritten changes. Write or revert first."
+msgstr "有未写入的更改，请先写入或还原。"
+
+msgid "Save sector to file..."
+msgstr "保存扇区到文件..."
+
+msgid "Restore sector from file..."
+msgstr "从文件恢复扇区..."
+
+msgid "Sector saved."
+msgstr "扇区已保存。"
+
+msgid "Sector written."
+msgstr "扇区写入完成。"
+
+msgid "Loaded from file. Unwritten changes."
+msgstr "已从文件载入，有未写入的更改。"
+
+msgid "Write this sector? LBA %llu of the target will be overwritten."
+msgstr "要写入该扇区吗？目标的 LBA %llu 将被覆盖。"
+
+msgid "LBA out of range."
+msgstr "LBA 超出范围。"
+
+msgid "Open sector file"
+msgstr "打开扇区文件"
+
+msgid "Save sector as"
+msgstr "保存扇区为"
+
+msgid "Cannot save file: "
+msgstr "无法保存文件："
+
+msgid "Confirm write"
+msgstr "确认写入"
+
+msgid "Confirm delete"
+msgstr "确认删除"
+
+msgid "UEFI"
+msgstr "UEFI"
+
+msgid "No UEFI environment on this system (BIOS boot or missing privilege)."
+msgstr "此系统没有 UEFI 环境（BIOS 启动或缺少权限）。"
+
+msgid "Administrator privilege is required to read UEFI variables."
+msgstr "读取 UEFI 变量需要管理员权限。"
+
+msgid "Order"
+msgstr "顺序"
+
+msgid "Flags"
+msgstr "标志"
+
+msgid "No UEFI boot entries found."
+msgstr "未找到 UEFI 启动条目。"
+
+msgid "Add entry"
+msgstr "添加条目"
+
+msgid "Edit entry"
+msgstr "编辑条目"
+
+msgid "Delete entry"
+msgstr "删除条目"
+
+msgid "Move Up"
+msgstr "上移"
+
+msgid "Move Down"
+msgstr "下移"
+
+msgid "Save Order"
+msgstr "保存顺序"
+
+msgid "Order changed. Press Save Order to write BootOrder."
+msgstr "顺序已更改，按\"保存顺序\"写入 BootOrder。"
+
+msgid "Executable path on the ESP, e.g. \\EFI\\Microsoft\\Boot\\bootmgfw.efi"
+msgstr "ESP 上的可执行文件路径，如 \\EFI\\Microsoft\\Boot\\bootmgfw.efi"
+
+msgid "Set as BootNext"
+msgstr "设为 BootNext"
+
+msgid "Clear BootNext"
+msgstr "清除 BootNext"
+
+msgid "Save Timeout"
+msgstr "保存超时"
+
+msgid "Export backup..."
+msgstr "导出备份..."
+
+msgid "Restore backup..."
+msgstr "恢复备份..."
+
+msgid "UEFI backup files"
+msgstr "UEFI 备份文件"
+
+msgid "UEFI backup saved to"
+msgstr "UEFI 备份已保存到"
+
+msgid "Invalid UEFI backup file."
+msgstr "无效的 UEFI 备份文件。"
+
+msgid "Restore this UEFI backup? Existing boot entries will be replaced."
+msgstr "恢复此 UEFI 备份？现有启动项将被替换。"
+
+msgid "Write UEFI boot entry changes to NVRAM?"
+msgstr "将 UEFI 启动项更改写入 NVRAM？"
+
+msgid "Delete this UEFI boot entry from NVRAM?"
+msgstr "从 NVRAM 中删除此 UEFI 启动项？"
+
+msgid "UEFI variables updated."
+msgstr "UEFI 变量已更新。"
+
+msgid "Restart as Administrator"
+msgstr "以管理员身份重启"
+
+msgid "Restart as Administrator was declined or failed."
+msgstr "以管理员身份重启被拒绝或失败。"
+
+msgid "Menu title"
+msgstr "菜单标题"
+
+msgid "Device type"
+msgstr "设备类型"
+
+msgid "Media Device (0x04) - Disk partition boot (HDD)"
+msgstr "媒体设备 (0x04) - 磁盘分区启动 (HDD)"
+
+msgid "Media Device (0x04) - File path only"
+msgstr "媒体设备 (0x04) - 仅文件路径"
+
+msgid "Locked by the firmware device path; cannot be changed."
+msgstr "由固件设备路径决定，无法更改。"
+
+msgid "No device path in this entry."
+msgstr "该条目没有设备路径。"
+
+msgid "Boot disk"
+msgstr "启动磁盘"
+
+msgid "Boot partition"
+msgstr "启动分区"
+
+msgid "Partition"
+msgstr "分区"
+
+msgid "Browse..."
+msgstr "浏览..."
+
+msgid "Attributes"
+msgstr "属性"
+
+msgid "Set as next boot (BootNext)"
+msgstr "设为下次启动项（BootNext）"
+
+msgid "No boot disk/partition selected."
+msgstr "未选择启动磁盘/分区。"
+
+msgid "Select a boot disk and partition first."
+msgstr "请先选择启动磁盘和分区。"
+
+msgid "No boot file specified."
+msgstr "未指定启动文件。"
+
+msgid "The partition start is not sector aligned."
+msgstr "分区起始位置未按扇区对齐。"
+
+msgid "Select a file on the ESP"
+msgstr "在 ESP 上选择文件"
+
+msgid "No FAT-capable partition available."
+msgstr "没有可用的 FAT 文件系统分区。"
+
+msgid "This partition is not sector aligned."
+msgstr "此分区未按扇区对齐。"
+
+msgid "Cannot open the file system on this partition."
+msgstr "无法打开此分区上的文件系统。"
+
+msgid "Cannot read the directory."
+msgstr "无法读取目录。"
+
+msgid "Retry"
+msgstr "重试"
+
+msgid "Up"
+msgstr "上级"
+
+msgid "Modified"
+msgstr "修改时间"
+
+msgid "<DIR>"
+msgstr "<DIR>"
