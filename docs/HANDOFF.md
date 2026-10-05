@@ -87,5 +87,5 @@ ctest --test-dir build/linux-gcc          # 64 用例 / 538 断言
 ```
 
 - Linux 侧技术选型（已决策）：GLFW + OpenGL3 渲染；zenity 子进程对话框（确认框/文件框）；pkexec 提权；efivarfs UEFI 变量；sysfs + 裸设备 IO 磁盘层。
-- Linux 专属文档：[M8_ACCEPTANCE.md](M8_ACCEPTANCE.md)（验收记录 + 偏差 + 事故 + 遗留清单）。
+- Linux 专属文档：[M8_ACCEPTANCE.md](M8_ACCEPTANCE.md)（验收记录 + 偏差 + 事故 + 遗留清单）、[HANDOFF_M8.md](HANDOFF_M8.md)（**M8 收尾交接：遗留任务、环境现状、复核路径**）。
 - 非 root 运行属正常形态：磁盘出 stub + 红字提示 + 提权重启按钮（pkexec）；写 UEFI/扇区需要 root 或 disk 组。

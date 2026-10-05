@@ -42,10 +42,19 @@
 ## Linux 后端（M8 新增）
 
 17. **efivarfs 一次 write() = 整变量替换**（2026-10-05 真机事故，BootOrder 曾丢失后恢复）
-    - 内核对 efivarfs 文件的每次 `write()` 调用都执行一次完整 SetVariable：第一次写 attrs 头、第二次写 payload 时，payload 前 4 字节会被当作 attrs 再次 SetVariable → 固件拒绝（EIO），且**变量可能就此丢失**（`No BootOrder is set`）。
+    - 内核对 efivarfs 文件的每次 `write()` 调用都执行一次完整 SetVariable：先写 attrs 头、再写 payload 时，payload 前 4 字节会被当作 attrs 再次 SetVariable → 固件拒绝（EIO），且**变量可能就此丢失**（`No BootOrder is set`）。
     - 正确顺序：`unlink()` → `open(O_CREAT|O_EXCL)` → **单次 write(attrs+payload 合并缓冲)**。`UefiVarsLinux::write` 已按此实现。
-    - 事故靠写前备份恢复（探针预先落盘的 `*.uefibak`）——LESSONS #12 的备份红线再次救命；UI 写路径的自动备份在 Linux 同样生效（`backup/` 目录已实测）。
+    - 事故靠写前备份恢复——LESSONS #12 的备份红线再次救命；UI 写路径的自动备份在 Linux 同样生效（`backup/` 目录已实测）。
 
 18. **日志打印 moved-from 对象 = 恒为空壳**（App::pumpDiskEnum，Windows 期遗留、Linux 首次真机日志暴露）
     - `d = std::move(r.disk)` 之后打印 `r.disk.model/partitions` → 恒为 "(unknown model), 0 partitions"，与 UI 实际显示相矛盾，误导排障两轮。
     - 修复：先捕获日志字段（number/model/partCount）再 move。任何"先 move 进容器、后打日志"的写法都属同类。
+
+19. **pkill -f 自杀**（2026-10-05，同一晚踩了三次）
+    - `pkill -f "build/.../bootroll"` 的模式会匹配到**执行它的 shell 自身的命令行**（bash -c 参数里就有这个字符串）→ shell 被自己的清理命令 SIGTERM。
+    - 规矩：清理进程一律 `pgrep -x <精确名>` 或显式 PID kill；pkill -f 只允许在排除了自匹配的上下文中使用。
+
+20. **FUSE 模拟病盘三件事**（hangfs 实测经验）
+    - **direct_io 必须开**：否则读走页缓存，永远打不到 FUSE 守护进程，"挂起"形同虚设。
+    - **时间门限放宽到 30s**：losetup 的探测序列（头部 + 多处 offset 探测）会跨过秒级短门限，把 attach 自己卡进 D 状态。
+    - **读线程死循环 = 守护进程 SIGTERM 免疫**：hf_read 内 `for(;;) sleep(...)` 使 FUSE 请求永不返回，挂起的 dd/losetup 进 D 状态（SIGTERM/timeout 均无效）；唯一恢复 = `kill -9` FUSE 守护进程，让内核读以 EIO 唤醒。
