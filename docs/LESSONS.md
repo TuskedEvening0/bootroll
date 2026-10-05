@@ -58,3 +58,9 @@
     - **direct_io 必须开**：否则读走页缓存，永远打不到 FUSE 守护进程，"挂起"形同虚设。
     - **时间门限放宽到 30s**：losetup 的探测序列（头部 + 多处 offset 探测）会跨过秒级短门限，把 attach 自己卡进 D 状态。
     - **读线程死循环 = 守护进程 SIGTERM 免疫**：hf_read 内 `for(;;) sleep(...)` 使 FUSE 请求永不返回，挂起的 dd/losetup 进 D 状态（SIGTERM/timeout 均无效）；唯一恢复 = `kill -9` FUSE 守护进程，让内核读以 EIO 唤醒。
+
+21. **libfuse3 的 direct_io 落点随版本漂移**（2026-10-05 复验 hangfs 时连续三败）
+    - **不是挂载选项**：fuse3 不认 `-o direct_io`（fuse2 遗留写法，报 `unknown option(s)`）。
+    - **也不是连接能力位**：3.18 头文件已无 `FUSE_CAP_DIRECT_IO`（fuse2→3 迁移文档提过它，别照抄）。
+    - **正解：`init(conn, cfg)` 回调里 `cfg->direct_io = 1`**（`struct fuse_config` 字段；init 签名在 3.x 各版本间还有 `void*` 返回值差异，以本机头文件为准）。
+    - 附：`fuse_opt_insert_arg` 作用在 `FUSE_ARGS_INIT` 的**借用 argv** 上会触发 assert（`args->allocated==0`）；要改 argv 就自己 strdup 整份（`fuse_opt_free_args` 会逐项 free，借用项会 double-free）。

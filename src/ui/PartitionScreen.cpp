@@ -22,7 +22,6 @@ namespace {
 constexpr size_t kSector = 512;
 
 static const ImVec4 kColInfo = ImVec4(0.5f, 0.55f, 0.6f, 1.0f);
-static const ImVec4 kColValue = ImVec4(0.6f, 0.85f, 1.0f, 1.0f);
 static const ImVec4 kColError = ImVec4(1.0f, 0.45f, 0.45f, 1.0f);
 static const ImVec4 kColOk = ImVec4(0.5f, 0.8f, 0.5f, 1.0f);
 static const ImVec4 kColWarn = ImVec4(0.95f, 0.8f, 0.3f, 1.0f);

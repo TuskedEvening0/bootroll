@@ -581,7 +581,7 @@ void drawEditForm(App& app, UefiUi& s)
         ImGui::TextUnformatted(T_("Device type"));
         ImGui::SameLine();
         ImGui::TextUnformatted(s.editDpLabel.c_str());
-        ImGui::TextDisabled(T_("Locked by the firmware device path; cannot be changed."));
+        ImGui::TextDisabled("%s", T_("Locked by the firmware device path; cannot be changed."));
     }
 
     const std::vector<DiskInfo>& disks = app.disks();
@@ -664,7 +664,7 @@ void drawEditForm(App& app, UefiUi& s)
         }
         ImGui::EndDisabled();
         ImGui::TextDisabled(
-            T_("Executable path on the ESP, e.g. \\EFI\\Microsoft\\Boot\\bootmgfw.efi"));
+            "%s", T_("Executable path on the ESP, e.g. \\EFI\\Microsoft\\Boot\\bootmgfw.efi"));
     }
 
     ImGui::TextUnformatted(T_("Attributes"));
@@ -777,7 +777,7 @@ void drawBodyImpl(App& app)
 
     drawEntryTable(s);
     if (s.entries.empty()) {
-        ImGui::TextDisabled(T_("No UEFI boot entries found."));
+        ImGui::TextDisabled("%s", T_("No UEFI boot entries found."));
     }
 
     const bool haveSel = s.selected >= 0 && s.selected < int(s.entries.size());

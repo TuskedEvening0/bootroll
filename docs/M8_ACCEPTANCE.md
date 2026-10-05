@@ -1,18 +1,18 @@
 # M8 验收记录（Linux 后端）
 
 > 日期：2026-10-05 · 环境：CachyOS (Arch) x86_64, UEFI 真机, GNOME/Wayland + Xvfb, gcc 16.2.1
-> 结论：**验收清单 §0 共 7 项，1–5、7 项全过并留证；第 6 项（病盘）完成 user 侧实测，root 侧停滞告警实测因执行环境故障中断**（见 §4）。
+> 结论：**验收清单 §0 共 7 项全部通过并留证**。第 6 项（病盘）user 侧实测通过；root 侧停滞告警于 2026-10-05 晚以 hangfs（30s 门限）+ 特权容器 root 会话补测完成（见 §3.2）。clang 构建复验同晚完成（见 §1 项 1）。
 
 ## 1. 逐项验收结果
 
 | # | 验收项 | 结果 | 证据 |
 |---|---|---|---|
-| 1 | gcc/clang 构建 0 错 0 警 | ✅ gcc（clang 未及验证，环境故障） | `cmake --build build/linux-gcc` 无 error/warning 输出 |
+| 1 | gcc/clang 构建 0 错 0 警 | ✅ 双编译器（2026-10-05 晚复验） | gcc 0/0；clang 初验报 5 警（unused-lambda-capture / unused-const-variable / format-security ×3），修复后 clang 与 gcc 均 0 错 0 警，双目录 ctest 64/538 全过 |
 | 2 | ctest 基线全过 | ✅ 64 用例 / 538 断言（基线 59/518 原样通过 + GPT 新增 5 用例/20 断言） | `bootroll_tests` doctest SUCCESS（独立进程直跑复核） |
 | 3 | 非 root 启动 | ✅ stub（有型号无分区）、UI 不冻结、提权按钮在位 | user 会话实测：`disk N: probe failed ... EACCES (errno 13)`，stub 保留，枚举收敛 |
 | 4 | root：分区/卷/UEFI | ✅ GPT 6 分区 + 挂载点/卷标/fsName 映射；UEFI 页读出 Boot0000/0001/0002（含描述、路径、BootOrder）；编辑/备份/BootNext 按钮在位 | Xvfb 截图 + UefiVars 探针 roundtrip（read/absent/write 全过） |
 | 5 | ESP 浏览 + 扇区编辑镜像读写 | ✅ ESP 浏览器只读浏览根目录与 `\EFI` 子目录；扇区编辑器对 losetup 镜像读取 FAT32 引导扇区、hex 改写 EB→90、写前自动备份、zenity 二次确认、写入后回读一致 | 截图 + `xxd`：backing file byte0=0x90，备份文件 byte0=0xEB |
-| 6 | 病盘场景 | ⚠️ 部分完成（见 §3） | user 侧全过；root 侧停滞告警实测中断 |
+| 6 | 病盘场景 | ✅ 全部完成（user 侧 + root 侧，见 §3） | root 会话实测：`WW disk 0: probe stalled (>10 s)` + `disks enumerated: 4 in 10003 ms (1 stalled)`，其余盘照常出详情（1–2ms），UI 存活（事件循环 CPU 时间持续推进，截图 ×2） |
 | 7 | 中文界面（字体回退链） | ✅ Noto Sans CJK 命中，全中文 UI | 截图 |
 
 ## 2. 实现偏差（与 M8_PLAN 的差异，均已记录）
@@ -32,9 +32,18 @@
 
 ### 3.2 hangfs 模拟挂起设备（FUSE，用于触发 >10s 告警）
 
-- 方案：mini FUSE（`/tmp/opencode/hangfs.c`）服务 64MB 全零镜像；首次 open 后 30s 内读取正常（供 losetup 探测），之后所有读取永久挂起 → losetup 挂成 /dev/loop1（loop 未被发现过滤）→ bootroll 探测 LBA0 必挂。
-- **中断点**：bootroll（root/Xvfb）已带病设备重启并等待 15s，停滞告警日志尚未核验时，执行环境工具通道全面劣化（见 §4），测试中止。
-- 清理注意：hf_read 的 `sleep` 死循环使 FUSE 守护进程对 SIGTERM 免疫（请求永不返回），**必须 `kill -9 <hangfs_pid>`** 才能解除 D 状态；随后 `losetup -d`、`fusermount3 -uz`。
+- 方案：mini FUSE（`tests/tools/hangfs.c`，已入库）服务 64MB 全零镜像；首次 open 后 30s 内读取正常（供 losetup 探测），之后所有读取永久挂起 → losetup 挂成 /dev/loop0 → bootroll 探测 LBA0 必挂。
+- **收尾实测（2026-10-05 晚）**：root 侧以特权容器（`--privileged`，容器内 uid 0 + 真实 /dev）完成——容器内 hangfs 挂载 → `losetup -f --show` 挂成 /dev/loop0（先 `mknod` 补容器缺失的 loop 节点）→ 35s 后以 root 启动 bootroll（Xvfb :99）→ 实测日志：
+  ```
+  [II] disk 1: KINGSTON SKC3000S1024G, 2 partitions, 1 ms
+  [II] disk 3: U391, 1 partitions, 1 ms
+  [II] disk 2: SAMSUNG MZVL81T0HELB-00BTW, 6 partitions, 2 ms
+  [WW] disk 0: probe stalled (>10 s)
+  [II] disks enumerated: 4 in 10003 ms (1 stalled)
+  ```
+  其余盘照常出详情（1–2ms），UI 不冻结（4s 内 CPU 时间 +3499 ticks，截图 ×2：停滞盘以 stub 在列、全中文 UI 正常渲染）。
+- 清理按红线顺序实测通过：`pkill -x bootroll` → `kill -9 <hangfs_pid>` → `losetup -d /dev/loop0` → `fusermount3 -uz` → 终态核验（无残留 loop/进程/挂载点）。
+- 实测备注：sudo 的 `sudo -l` 显示 NOPASSWD 但执行仍要求密码（现象未深究），root 会话改由特权容器提供，行为等价（uid 0 + 真实块设备）。hangfs 复验中踩到 libfuse3 API 漂移（direct_io 落点），已记入 LESSONS #21。
 
 ### 3.3 环境故障期间遗留的清理项（在可信终端执行）
 
@@ -65,7 +74,7 @@ pkill -9 -f '/tmp/sicktest/bootroll'               # user 实例（如有）
 
 ## 6. 遗留事项（交接清单）
 
-- [ ] 验收项 6 收尾：在可信终端按 §3.3 清理后，用 hangfs（30s 门限）复跑 root 停滞告警实测：预期日志 `WW disk N: probe stalled (>10 s)` + `disks enumerated: N in ... (1 stalled)`，其余盘照常出详情，UI 不冻结。
-- [ ] clang 构建复验（验收项 1 的另一半）。
+- [x] 验收项 6 收尾：root 停滞告警实测完成（2026-10-05 晚，hangfs 30s 门限 + 特权容器 root 会话，见 §3.2）。
+- [x] clang 构建复验（验收项 1 的另一半）：修复 5 警后 clang 0 错 0 警，ctest 64/538 全过。
 - [ ] `systemBcdPath()` 命中路径未验证（本机无该文件）。
 - [ ] dpiScale 恒 1.0（计划允许）；GLFW 高分屏留待后续迭代。

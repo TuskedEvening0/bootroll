@@ -137,7 +137,7 @@ void EspFileDialog::openVolume(App& app)
     const uint32_t diskNumber = d.number;
     const uint64_t base = p.offsetBytes;
     const uint32_t diskSector = d.sectorSize;
-    FatVolumeReader reader = [this, &app, diskNumber, base,
+    FatVolumeReader reader = [&app, diskNumber, base,
                               diskSector](uint64_t off, uint32_t bytes,
                                           uint8_t* out) -> bool {
         // Raw disk I/O needs disk-sector aligned ranges; widen and slice.
