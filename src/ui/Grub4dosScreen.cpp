@@ -2,6 +2,7 @@
 
 #include "app/App.h"
 #include "app/I18n.h"
+#include "core/util/LocalTime.h"
 #include "core/bootcode/BootCode.h"
 #include "core/bootcode/PbrCode.h"
 #include "ui/widgets/DiskPicker.h"
@@ -48,9 +49,8 @@ bool writeAutoBackup(App& app, const std::string& tag, const uint8_t* data,
         *err = std::string(T_("Cannot create backup directory: ")) + ec.message();
         return false;
     }
-    std::time_t t = std::time(nullptr);
-    std::tm tmv {};
-    localtime_s(&tmv, &t);
+    const std::time_t t = std::time(nullptr);
+    const std::tm tmv = bootroll::localTm(t);
     char stamp[32];
     std::strftime(stamp, sizeof(stamp), "%Y%m%d_%H%M%S", &tmv);
     const std::string path = dir + "/" + tag + "_" + stamp + ".bin";
@@ -274,7 +274,7 @@ void writeGrldrFile(App& app, GrubUi& st)
         st.error = T_("Boot code not bundled in this build.");
         return;
     }
-    const std::string path = letter + "\\GRLDR";
+    const std::string path = letter + "/GRLDR"; // '/' works on Win32 and POSIX
     std::ofstream f(path, std::ios::binary);
     if (!f) {
         st.error = std::string(T_("Cannot open file: ")) + path;

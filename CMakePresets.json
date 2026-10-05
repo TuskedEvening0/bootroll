@@ -16,14 +16,24 @@
     },
     {
       "name": "linux-gcc",
-      "displayName": "Linux x64 / GCC (reserved for M7)",
-      "description": "Placeholder preset for the future Debian/Arch/RHEL backend",
+      "displayName": "Linux x64 / GCC (M8 backend)",
+      "description": "Linux backend: GLFW + OpenGL3, portable core/ui/app",
       "generator": "Unix Makefiles",
       "binaryDir": "${sourceDir}/build/linux-gcc",
-      "hidden": true,
       "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux" },
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "linux-gcc-debug",
+      "displayName": "Linux x64 / GCC Debug (M8 backend)",
+      "description": "Linux backend, debug build for diagnostics",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build/linux-gcc-debug",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux" },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
       }
     }
   ],
@@ -39,6 +49,16 @@
       "displayName": "bootroll Debug (x64)",
       "configurePreset": "win-msvc",
       "configuration": "Debug"
+    },
+    {
+      "name": "linux-gcc-release",
+      "displayName": "bootroll Release (Linux/GCC)",
+      "configurePreset": "linux-gcc"
+    },
+    {
+      "name": "linux-gcc-debug",
+      "displayName": "bootroll Debug (Linux/GCC)",
+      "configurePreset": "linux-gcc-debug"
     }
   ]
 }

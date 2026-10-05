@@ -2,6 +2,7 @@
 
 #include "app/App.h"
 #include "app/I18n.h"
+#include "core/util/LocalTime.h"
 #include "core/disk/DiskInfo.h"
 #include "imgui.h"
 
@@ -317,8 +318,7 @@ bool EspFileDialog::draw(App& app, std::string* outPath)
             ImGui::NextColumn();
             if (e.mtime > 0) {
                 const std::time_t t = std::time_t(e.mtime);
-                std::tm tmv {};
-                localtime_s(&tmv, &t);
+                const std::tm tmv = bootroll::localTm(t);
                 char timeBuf[32];
                 std::strftime(timeBuf, sizeof(timeBuf), "%Y-%m-%d %H:%M", &tmv);
                 ImGui::TextUnformatted(timeBuf);

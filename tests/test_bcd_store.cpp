@@ -8,6 +8,7 @@
 #include "core/util/HexText.h"
 
 #include <cstdio>
+#include <cstring>
 #include <filesystem>
 
 using namespace bootroll;

@@ -2,6 +2,7 @@
 
 #include "app/App.h"
 #include "app/I18n.h"
+#include "core/util/LocalTime.h"
 #include "core/bootcode/BootCode.h"
 #include "ui/widgets/DiskPicker.h"
 #include "imgui.h"
@@ -45,9 +46,8 @@ bool writeAutoBackup(App& app, const std::string& tag, const uint8_t* data,
         *err = std::string(T_("Cannot create backup directory: ")) + ec.message();
         return false;
     }
-    std::time_t t = std::time(nullptr);
-    std::tm tmv {};
-    localtime_s(&tmv, &t);
+    const std::time_t t = std::time(nullptr);
+    const std::tm tmv = bootroll::localTm(t);
     char stamp[32];
     std::strftime(stamp, sizeof(stamp), "%Y%m%d_%H%M%S", &tmv);
     const std::string path = dir + "/" + tag + "_" + stamp + ".bin";

@@ -2,6 +2,7 @@
 
 #include "app/App.h"
 #include "app/I18n.h"
+#include "core/util/LocalTime.h"
 #include "core/disk/DiskInfo.h"
 #include "core/uefi/UefiVars.h"
 #include "imgui.h"
@@ -9,6 +10,7 @@
 #include "ui/EspFileDialog.h"
 
 #include <cstdio>
+#include <cstring>
 #include <ctime>
 #include <filesystem>
 #include <fstream>
@@ -181,9 +183,8 @@ bool writeAutoBackup(App& app, const UefiUi& s, std::string* outPath, std::strin
         *err = std::string(T_("Cannot create backup directory: ")) + ec.message();
         return false;
     }
-    std::time_t t = std::time(nullptr);
-    std::tm tmv {};
-    localtime_s(&tmv, &t);
+    const std::time_t t = std::time(nullptr);
+    const std::tm tmv = bootroll::localTm(t);
     char stamp[32];
     std::strftime(stamp, sizeof(stamp), "%Y%m%d_%H%M%S", &tmv);
     const std::string path = dir + "/uefi_" + stamp + ".uefibak";
@@ -709,7 +710,7 @@ void drawEntryTable(UefiUi& s)
         const BootEntry& e = s.entries[i];
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
-        char orderTxt[16];
+        char orderTxt[32];
         std::snprintf(orderTxt, sizeof(orderTxt), "%zu", i);
         if (ImGui::Selectable(orderTxt, s.selected == int(i),
                               ImGuiSelectableFlags_SpanAllColumns)) {

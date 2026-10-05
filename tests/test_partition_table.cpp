@@ -192,3 +192,141 @@ TEST_CASE("hidden <-> visible type mapping")
     REQUIRE(setMbrEntryType(b.data(), b.size(), 0, mbrVisibleTypeOf(0x17)));
     CHECK(parseMbr(b.data(), b.size()).entries[0].type == 0x07);
 }
+
+// --- GPT (M8) ------------------------------------------------------------
+
+#include "core/disk/PartitionTable.h"
+
+#include <cstdio>
+
+using bootroll::crc32;
+using bootroll::parseGptEntries;
+using bootroll::parseGptHeader;
+
+namespace {
+
+void putLe32(std::vector<uint8_t>& b, size_t off, uint32_t v)
+{
+    for (int i = 0; i < 4; ++i) {
+        b[off + size_t(i)] = uint8_t(v >> (8 * i));
+    }
+}
+
+void putLe64(std::vector<uint8_t>& b, size_t off, uint64_t v)
+{
+    for (int i = 0; i < 8; ++i) {
+        b[off + size_t(i)] = uint8_t(v >> (8 * i));
+    }
+}
+
+// GUID "c12a7328-f81f-11d2-ba4b-00a0c93ec93b" in mixed-endian byte layout.
+std::vector<uint8_t> espTypeGuidBytes()
+{
+    return {0x28, 0x73, 0x2a, 0xc1, 0x1f, 0xf8, 0xd2, 0x11,
+            0xba, 0x4b, 0x00, 0xa0, 0xc9, 0x3e, 0xc9, 0x3b};
+}
+
+struct GptFixture {
+    std::vector<uint8_t> header = std::vector<uint8_t>(512, 0);
+    std::vector<uint8_t> entries = std::vector<uint8_t>(128 * 4, 0);
+
+    void writeHeader(uint32_t entryCount, uint32_t entrySize)
+    {
+        std::memcpy(header.data(), "EFI PART", 8);
+        putLe32(header, 0x0C, 92);          // header size
+        putLe32(header, 0x10, 0);           // CRC (fixed up below)
+        putLe64(header, 0x18, 1);           // current LBA
+        putLe64(header, 0x20, 0x12345678);  // backup LBA
+        putLe64(header, 0x28, 34);          // first usable
+        putLe64(header, 0x30, 1000);        // last usable
+        putLe64(header, 0x48, 2);           // entry array LBA
+        putLe32(header, 0x50, entryCount);
+        putLe32(header, 0x54, entrySize);
+        putLe32(header, 0x58, crc32(entries.data(), entryCount * entrySize));
+        putLe32(header, 0x10, crc32(header.data(), 92));
+    }
+
+    void writeEntry(size_t index, const std::vector<uint8_t>& typeGuid,
+                    uint64_t firstLba, uint64_t lastLba, const char* name)
+    {
+        uint8_t* e = entries.data() + index * 128;
+        std::memcpy(e, typeGuid.data(), 16);
+        for (int i = 0; i < 16; ++i) {
+            e[16 + i] = uint8_t(0x10 * (index + 1) + i); // unique partition guid
+        }
+        putLe64(entries, index * 128 + 32, firstLba);
+        putLe64(entries, index * 128 + 40, lastLba);
+        // UTF-16LE name; ASCII input only.
+        for (int i = 0; name[i] != 0 && i < 36; ++i) {
+            e[56 + 2 * i] = uint8_t(name[i]);
+        }
+    }
+};
+
+} // namespace
+
+TEST_CASE("crc32 matches the IEEE 802.3 check value")
+{
+    CHECK(crc32(nullptr, 0) == 0x00000000u);
+    const uint8_t data[9] = {'1', '2', '3', '4', '5', '6', '7', '8', '9'};
+    CHECK(crc32(data, sizeof(data)) == 0xCBF43926u); // canonical check value
+}
+
+TEST_CASE("parseGptHeader: rejects non-GPT sectors")
+{
+    bootroll::GptHeader h = parseGptHeader(sampleMbr().data(), 512);
+    CHECK_FALSE(h.valid);
+    std::vector<uint8_t> sig(512, 0);
+    std::memcpy(sig.data(), "EFI PARTX", 9); // truncated signature
+    h = parseGptHeader(sig.data(), 512);
+    CHECK_FALSE(h.valid);
+}
+
+TEST_CASE("parseGptHeader + entries: full round trip")
+{
+    GptFixture fx;
+    fx.writeEntry(0, espTypeGuidBytes(), 2048, 6758399, "EFI system partition");
+    fx.writeEntry(1, espTypeGuidBytes(), 6758400, 100020000, "basic data");
+    fx.writeHeader(4, 128); // 2 used + 2 zeroed (unused) entries
+
+    const bootroll::GptHeader h = parseGptHeader(fx.header.data(), 512);
+    REQUIRE(h.valid);
+    CHECK(h.entryCount == 4);
+    CHECK(h.entrySize == 128);
+    CHECK(h.entryArrayLba == 2);
+    CHECK(h.firstUsableLba == 34);
+    CHECK(h.lastUsableLba == 1000);
+
+    const std::vector<bootroll::GptEntry> entries =
+        parseGptEntries(h, fx.entries.data(), fx.entries.size());
+    REQUIRE(entries.size() == 2);
+    CHECK(entries[0].typeGuid == "c12a7328-f81f-11d2-ba4b-00a0c93ec93b");
+    CHECK(entries[0].firstLba == 2048);
+    CHECK(entries[0].lastLba == 6758399);
+    CHECK(entries[0].name == "EFI system partition");
+    CHECK(entries[1].partGuid.size() == 36);
+    CHECK(entries[1].name == "basic data");
+}
+
+TEST_CASE("parseGptEntries: corrupt array CRC yields no entries")
+{
+    GptFixture fx;
+    fx.writeEntry(0, espTypeGuidBytes(), 2048, 6758399, "ESP");
+    fx.writeHeader(4, 128);
+    fx.entries[60] ^= 0xFF; // flip a byte inside the entry array
+
+    const bootroll::GptHeader h = parseGptHeader(fx.header.data(), 512);
+    REQUIRE(h.valid);
+    CHECK(parseGptEntries(h, fx.entries.data(), fx.entries.size()).empty());
+}
+
+TEST_CASE("parseGptHeader: corrupt header CRC is rejected")
+{
+    GptFixture fx;
+    fx.writeEntry(0, espTypeGuidBytes(), 2048, 6758399, "ESP");
+    fx.writeHeader(4, 128);
+    fx.header[70] ^= 0xFF; // flip a payload byte after the CRC was fixed up
+
+    const bootroll::GptHeader h = parseGptHeader(fx.header.data(), 512);
+    CHECK_FALSE(h.valid);
+}

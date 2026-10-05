@@ -17,21 +17,36 @@ else()
 endif()
 
 # ---------------------------------------------------------------------------
-# Dear ImGui (submodule): core + win32 + dx11 backends, built as a static lib.
+# Dear ImGui (submodule): core + platform backends, built as a static lib.
+#   Windows: win32 + dx11 backends.  Linux: glfw + opengl3 backends.
 # ---------------------------------------------------------------------------
 set(IMGUI_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/imgui)
+if(WIN32)
+    set(IMGUI_BACKEND_SOURCES
+        ${IMGUI_DIR}/backends/imgui_impl_win32.cpp
+        ${IMGUI_DIR}/backends/imgui_impl_dx11.cpp)
+else()
+    set(IMGUI_BACKEND_SOURCES
+        ${IMGUI_DIR}/backends/imgui_impl_glfw.cpp
+        ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp)
+endif()
 add_library(imgui STATIC
     ${IMGUI_DIR}/imgui.cpp
     ${IMGUI_DIR}/imgui_demo.cpp
     ${IMGUI_DIR}/imgui_draw.cpp
     ${IMGUI_DIR}/imgui_tables.cpp
     ${IMGUI_DIR}/imgui_widgets.cpp
-    ${IMGUI_DIR}/backends/imgui_impl_win32.cpp
-    ${IMGUI_DIR}/backends/imgui_impl_dx11.cpp)
+    ${IMGUI_BACKEND_SOURCES})
 target_include_directories(imgui PUBLIC ${IMGUI_DIR} ${IMGUI_DIR}/backends)
 target_compile_options(imgui PRIVATE
     $<$<CXX_COMPILER_ID:MSVC>:/W0>
     $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-w>)
+
+if(NOT WIN32)
+    # Linux window + GL stack (decision: GLFW + OpenGL3, M8_PLAN §2).
+    find_package(glfw3 REQUIRED)
+    find_package(OpenGL REQUIRED)
+endif()
 
 # ---------------------------------------------------------------------------
 # tinygettext (submodule): .po/.mo loading, UTF-8 only (no iconv dependency).
@@ -141,7 +156,31 @@ endif()
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/app/Version.h.in
                ${CMAKE_BINARY_DIR}/generated/Version.h @ONLY)
 
-add_executable(bootroll WIN32
+# Per-platform sources. core/ui/app stay shared; only src/platform/<os> and
+# the ImGui backend wiring differ (M8).
+if(WIN32)
+    set(BOOTROLL_PLATFORM_SOURCES
+        src/platform/win/PlatformWin.h   src/platform/win/PlatformWin.cpp
+        src/platform/win/UefiWin.h       src/platform/win/UefiWin.cpp
+        src/platform/win/Win32Window.h   src/platform/win/Win32Window.cpp
+        src/platform/win/RenderDX11.h    src/platform/win/RenderDX11.cpp
+        src/platform/win/DiskWin.h       src/platform/win/DiskWin.cpp
+        src/platform/win/VolumeWin.h     src/platform/win/VolumeWin.cpp
+        src/platform/win/ElevateWin.h    src/platform/win/ElevateWin.cpp)
+    set(BOOTROLL_EXECUTABLE_WIN32 WIN32)
+else()
+    set(BOOTROLL_PLATFORM_SOURCES
+        src/platform/linux/PlatformLinux.h   src/platform/linux/PlatformLinux.cpp
+        src/platform/linux/UefiVarsLinux.h   src/platform/linux/UefiVarsLinux.cpp
+        src/platform/linux/GlfwWindow.h      src/platform/linux/GlfwWindow.cpp
+        src/platform/linux/RenderGL.h        src/platform/linux/RenderGL.cpp
+        src/platform/linux/DiskAccessLinux.h src/platform/linux/DiskAccessLinux.cpp
+        src/platform/linux/VolumeLinux.h     src/platform/linux/VolumeLinux.cpp
+        src/platform/linux/SysFs.h           src/platform/linux/SysFs.cpp)
+    set(BOOTROLL_EXECUTABLE_WIN32 "") # console subsystem; GLFW owns the window
+endif()
+
+add_executable(bootroll ${BOOTROLL_EXECUTABLE_WIN32}
     src/main.cpp
     src/app/App.h              src/app/App.cpp
     src/app/CrashHandler.h     src/app/CrashHandler.cpp
@@ -162,13 +201,7 @@ add_executable(bootroll WIN32
     src/core/fat/FatVolume.h   src/core/fat/FatVolume.cpp
     src/platform/IPlatform.h
     src/platform/IUefiVars.h
-    src/platform/win/PlatformWin.h   src/platform/win/PlatformWin.cpp
-    src/platform/win/UefiWin.h       src/platform/win/UefiWin.cpp
-    src/platform/win/Win32Window.h   src/platform/win/Win32Window.cpp
-    src/platform/win/RenderDX11.h    src/platform/win/RenderDX11.cpp
-    src/platform/win/DiskWin.h       src/platform/win/DiskWin.cpp
-    src/platform/win/VolumeWin.h     src/platform/win/VolumeWin.cpp
-    src/platform/win/ElevateWin.h    src/platform/win/ElevateWin.cpp
+    ${BOOTROLL_PLATFORM_SOURCES}
     src/ui/MainScreen.h              src/ui/MainScreen.cpp
     src/ui/BcdEditorScreen.h         src/ui/BcdEditorScreen.cpp
     src/ui/BcdProfessionalScreen.h   src/ui/BcdProfessionalScreen.cpp
@@ -193,16 +226,26 @@ target_include_directories(bootroll PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${CMAKE_BINARY_DIR}/generated)
 
-target_link_libraries(bootroll PRIVATE imgui tinygettext
-    d3d11 dxgi d3dcompiler imm32 dwmapi setupapi shell32 comdlg32)
-
-target_compile_definitions(bootroll PRIVATE UNICODE _UNICODE NOMINMAX WIN32_LEAN_AND_MEAN)
+if(WIN32)
+    target_link_libraries(bootroll PRIVATE imgui tinygettext
+        d3d11 dxgi d3dcompiler imm32 dwmapi setupapi shell32 comdlg32)
+    target_compile_definitions(bootroll PRIVATE UNICODE _UNICODE NOMINMAX WIN32_LEAN_AND_MEAN)
+else()
+    # pthread: required for C++20 std::thread. GLFW target pulls X11/Wayland deps.
+    find_package(Threads REQUIRED)
+    target_link_libraries(bootroll PRIVATE imgui tinygettext glfw OpenGL::GL Threads::Threads)
+endif()
 
 # Crash triage: -DBOOTROLL_ASAN=ON builds the exe with AddressSanitizer
 # (run with ASAN_OPTIONS=log_path=<file> since a GUI app has no stderr).
-option(BOOTROLL_ASAN "Build bootroll.exe with AddressSanitizer" OFF)
+option(BOOTROLL_ASAN "Build bootroll with AddressSanitizer" OFF)
 if(BOOTROLL_ASAN)
-    target_compile_options(bootroll PRIVATE /fsanitize=address)
+    if(MSVC)
+        target_compile_options(bootroll PRIVATE /fsanitize=address)
+    else()
+        target_compile_options(bootroll PRIVATE -fsanitize=address)
+        target_link_options(bootroll PRIVATE -fsanitize=address)
+    endif()
 endif()
 
 set_target_properties(bootroll PROPERTIES

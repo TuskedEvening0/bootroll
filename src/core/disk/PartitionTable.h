@@ -22,6 +22,42 @@ struct MbrTable {
     std::vector<MbrEntry> entries; // always 4 entries
 };
 
+// One GPT partition entry (128+ bytes, little-endian on disk).
+struct GptEntry {
+    std::string typeGuid;    // lowercase partition-type GUID string
+    std::string partGuid;    // lowercase unique partition GUID string
+    uint64_t firstLba = 0;
+    uint64_t lastLba = 0;    // inclusive
+    uint64_t attributes = 0;
+    std::string name;        // UTF-8 (decoded from UTF-16LE)
+};
+
+// Parsed GPT header (LBA 1 / backup header).
+struct GptHeader {
+    bool valid = false;          // signature + header CRC32 ok
+    uint32_t headerSize = 0;
+    uint64_t currentLba = 0;
+    uint64_t backupLba = 0;
+    uint64_t firstUsableLba = 0;
+    uint64_t lastUsableLba = 0;
+    uint64_t entryArrayLba = 0;  // LBA of the partition entry array
+    uint32_t entryCount = 0;
+    uint32_t entrySize = 0;      // usually 128
+    uint32_t entryCrc = 0;       // CRC32 of the entry array
+};
+
+// Parse a 512-byte GPT header sector ("EFI PART" at offset 0). Validates the
+// header CRC32. Never throws; an invalid sector yields valid=false.
+GptHeader parseGptHeader(const uint8_t* sector, size_t size);
+
+// Decode GPT entries from a raw entry array. Validates the array CRC32
+// against header.entryCrc; a mismatch yields an empty vector.
+std::vector<GptEntry> parseGptEntries(const GptHeader& header,
+                                      const uint8_t* bytes, size_t size);
+
+// IEEE 802.3 CRC-32 (reflected, poly 0xEDB88320) - GPT and general use.
+uint32_t crc32(const uint8_t* data, size_t size);
+
 // Well-known MBR partition type labels ("" when unknown).
 std::string_view mbrPartitionTypeLabel(uint8_t type);
 
@@ -48,5 +84,8 @@ bool clearMbrEntry(uint8_t* sector, size_t size, int index);
 // 0x04<->0x14. Returns 0 when the type has no hidden/visible counterpart.
 uint8_t mbrHiddenTypeOf(uint8_t type);
 uint8_t mbrVisibleTypeOf(uint8_t type);
+
+// GPT partition type GUID of an EFI System Partition (lowercase string form).
+inline constexpr std::string_view kGptEspTypeGuid = "c12a7328-f81f-11d2-ba4b-00a0c93ec93b";
 
 } // namespace bootroll

@@ -1,5 +1,6 @@
 #include "app/App.h"
 #include "app/I18n.h"
+#include "core/util/LocalTime.h"
 #include "app/Settings.h"
 #include "imgui.h"
 #include "ui/AboutScreen.h"
@@ -89,8 +90,7 @@ void App::log(const std::string& line, LogLevel level)
 {
     char stamp[40];
     const std::time_t now = std::time(nullptr);
-    std::tm tm {};
-    localtime_s(&tm, &now);
+    const std::tm tm = localTm(now);
     std::strftime(stamp, sizeof stamp, "%Y-%m-%d %H:%M:%S", &tm);
     const char* tag = "II";
     if (level == LogLevel::Warn) {
@@ -345,6 +345,12 @@ void App::pumpDiskEnum()
             m_diskList.clear();
             m_selectedDisk = -1;
         }
+        // Capture log fields before the disk is moved into the list.
+        const bool isDetail = !r.stub;
+        const uint32_t number = r.disk.number;
+        const std::string name = r.disk.model.empty() ? "(unknown model)" : r.disk.model;
+        const size_t partCount = r.disk.partitions.size();
+
         bool replaced = false;
         for (auto& d : m_diskList) {
             if (d.number == r.disk.number) {
@@ -356,16 +362,14 @@ void App::pumpDiskEnum()
         if (!replaced) {
             m_diskList.push_back(std::move(r.disk));
         }
-        if (!r.stub) {
+        if (isDetail) {
             char ms[32];
             std::snprintf(ms, sizeof ms, "%.0f", r.elapsedMs);
-            const std::string name =
-                r.disk.model.empty() ? "(unknown model)" : r.disk.model;
             if (r.error.empty()) {
-                log("disk " + std::to_string(r.disk.number) + ": " + name + ", " +
-                    std::to_string(r.disk.partitions.size()) + " partitions, " + ms + " ms");
+                log("disk " + std::to_string(number) + ": " + name + ", " +
+                    std::to_string(partCount) + " partitions, " + ms + " ms");
             } else {
-                log("disk " + std::to_string(r.disk.number) + ": probe failed after " +
+                log("disk " + std::to_string(number) + ": probe failed after " +
                         ms + " ms: " + r.error,
                     LogLevel::Warn);
             }

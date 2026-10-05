@@ -5,12 +5,25 @@
 
 #include <algorithm>
 #include <cstdio>
+#include <cstring>
 #include <random>
 #include <set>
 
 namespace bootroll {
 
 namespace {
+
+// CRT file-mode type: wide on Windows (_wfopen), narrow elsewhere (fopen
+// takes UTF-8 paths natively on POSIX).
+#ifdef _WIN32
+using FileMode = const wchar_t*;
+constexpr FileMode kFileModeRead = L"rb";
+constexpr FileMode kFileModeWrite = L"wb";
+#else
+using FileMode = const char*;
+constexpr FileMode kFileModeRead = "rb";
+constexpr FileMode kFileModeWrite = "wb";
+#endif
 
 std::vector<uint8_t> dwordBytes(uint32_t v)
 {
@@ -24,7 +37,8 @@ uint32_t dwordFromBytes(const uint8_t* p)
 
 // The narrow CRT file APIs interpret paths in the ANSI code page, which breaks
 // for BCD files under non-ASCII folders. Convert our UTF-8 paths to wide chars
-// (UTF-16 on Windows) and use the CRT's wide variants instead.
+// (UTF-16 on Windows) and use the CRT's wide variants instead. POSIX takes
+// UTF-8 paths natively, so the narrow CRT works there as-is.
 #ifdef _WIN32
 std::wstring widePath(const std::string& path)
 {
@@ -34,40 +48,37 @@ std::wstring widePath(const std::string& path)
     return std::wstring(reinterpret_cast<const wchar_t*>(u16.data()),
                         u16.size() / sizeof(wchar_t));
 }
+#endif
 
-FILE* openFileUtf8(const std::string& path, const wchar_t* mode)
+FILE* openFileUtf8(const std::string& path, FileMode mode)
 {
+#ifdef _WIN32
     FILE* f = nullptr;
     if (_wfopen_s(&f, widePath(path).c_str(), mode) != 0)
         return nullptr;
     return f;
-}
-
-int removeFileUtf8(const std::string& path)
-{
-    return _wremove(widePath(path).c_str());
-}
-
-int renameFileUtf8(const std::string& from, const std::string& to)
-{
-    return _wrename(widePath(from).c_str(), widePath(to).c_str());
-}
 #else
-FILE* openFileUtf8(const std::string& path, const char* mode)
-{
-    return fopen(path.c_str(), mode); // POSIX takes UTF-8 paths natively
+    return fopen(path.c_str(), mode);
+#endif
 }
 
 int removeFileUtf8(const std::string& path)
 {
+#ifdef _WIN32
+    return _wremove(widePath(path).c_str());
+#else
     return remove(path.c_str());
+#endif
 }
 
 int renameFileUtf8(const std::string& from, const std::string& to)
 {
+#ifdef _WIN32
+    return _wrename(widePath(from).c_str(), widePath(to).c_str());
+#else
     return rename(from.c_str(), to.c_str());
-}
 #endif
+}
 
 std::string guidFromWideParts(const HiveKey& key)
 {
@@ -253,7 +264,7 @@ std::vector<uint8_t> BcdStore::saveBytes() const
 
 bool BcdStore::loadFile(const std::string& path, std::string* error)
 {
-    FILE* f = openFileUtf8(path, L"rb");
+    FILE* f = openFileUtf8(path, kFileModeRead);
     if (!f) {
         if (error)
             *error = "cannot open " + path;
@@ -289,7 +300,7 @@ bool BcdStore::saveFile(const std::string& path, std::string* error)
 
     const std::string tmp = path + ".tmp";
     const std::string bak = path + ".bak";
-    FILE* f = openFileUtf8(tmp, L"wb");
+    FILE* f = openFileUtf8(tmp, kFileModeWrite);
     if (!f) {
         if (error)
             *error = "cannot create " + tmp;

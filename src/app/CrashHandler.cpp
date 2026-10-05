@@ -1,5 +1,7 @@
 #include "app/CrashHandler.h"
 
+#ifdef _WIN32
+
 #include <windows.h>
 #include <dbghelp.h>
 
@@ -113,3 +115,85 @@ void installCrashHandler()
 }
 
 } // namespace bootroll
+
+#else // POSIX (Linux): signal + backtrace, minimal but async-crash usable.
+
+#include <cstdio>
+#include <cstring>
+#include <string>
+#include <unistd.h>
+
+#include <execinfo.h>
+#include <signal.h>
+#include <fcntl.h>
+#include <time.h>
+
+namespace bootroll {
+
+namespace {
+
+// Exe directory from /proc/self/exe (single-file portable layout).
+void crashLogPath(char* buf, size_t size)
+{
+    char exe[4096] = ".";
+    ssize_t n = readlink("/proc/self/exe", exe, sizeof(exe) - 1);
+    if (n <= 0) {
+        n = 1;
+        exe[0] = '.';
+    }
+    exe[n] = '\0';
+    char* slash = strrchr(exe, '/');
+    if (slash != nullptr) {
+        *slash = '\0';
+    }
+    std::snprintf(buf, size, "%s/crash.log", exe);
+}
+
+void appendText(int fd, const char* text)
+{
+    if (write(fd, text, strlen(text)) < 0) {
+        // Nothing left to do inside a crash handler.
+    }
+}
+
+// Best-effort crash report. Only async-signal-safe calls (open/write/backtrace)
+// plus snprintf - deliberately simpler than the Win32 minidump path.
+void onFatalSignal(int sig)
+{
+    char path[4200];
+    crashLogPath(path, sizeof(path));
+    const int fd = open(path, O_WRONLY | O_CREAT | O_APPEND, 0644);
+
+    char buf[128];
+    std::snprintf(buf, sizeof(buf), "---- crash: signal %d ----\n", sig);
+    if (fd >= 0) {
+        appendText(fd, buf);
+    }
+    appendText(STDERR_FILENO, buf);
+
+    void* frames[64];
+    const int count = backtrace(frames, 64);
+    if (fd >= 0) {
+        backtrace_symbols_fd(frames, count, fd);
+        close(fd);
+    }
+    backtrace_symbols_fd(frames, count, STDERR_FILENO);
+
+    // Restore the default disposition and re-raise so the exit status/core
+    // still reflect the fatal signal.
+    signal(sig, SIG_DFL);
+    raise(sig);
+}
+
+} // namespace
+
+void installCrashHandler()
+{
+    for (int sig : {SIGSEGV, SIGABRT, SIGFPE, SIGILL, SIGBUS}) {
+        signal(sig, onFatalSignal);
+    }
+}
+
+} // namespace bootroll
+
+#endif
