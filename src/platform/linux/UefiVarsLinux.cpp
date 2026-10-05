@@ -170,7 +170,10 @@ bool UefiVarsLinux::write(const std::string& name, const std::vector<uint8_t>& d
 {
     // efivarfs refuses to change an existing variable's size through an open
     // fd: the correct sequence is unlink() first, then create + write
-    // (PLATFORM_SEAMS.md #4; O_TRUNC alone is not reliable).
+    // (PLATFORM_SEAMS.md #4; O_TRUNC alone is not reliable). Each write()
+    // call replaces the whole variable, so attrs header + payload must go
+    // out in a SINGLE write - a second write() would re-set the variable
+    // with the payload reinterpreted (attrs from payload bytes -> EIO).
     const std::string path = varPath(name);
     if (unlink(path.c_str()) != 0 && errno != ENOENT) {
         m_lastCode = errno;
@@ -185,16 +188,18 @@ bool UefiVarsLinux::write(const std::string& name, const std::vector<uint8_t>& d
         return false;
     }
 
-    unsigned char header[4] = {
-        static_cast<unsigned char>(attrs & 0xFF),
-        static_cast<unsigned char>((attrs >> 8) & 0xFF),
-        static_cast<unsigned char>((attrs >> 16) & 0xFF),
-        static_cast<unsigned char>((attrs >> 24) & 0xFF),
-    };
+    std::vector<uint8_t> blob;
+    blob.reserve(4 + data.size());
+    blob.push_back(uint8_t(attrs & 0xFF));
+    blob.push_back(uint8_t((attrs >> 8) & 0xFF));
+    blob.push_back(uint8_t((attrs >> 16) & 0xFF));
+    blob.push_back(uint8_t((attrs >> 24) & 0xFF));
+    blob.insert(blob.end(), data.begin(), data.end());
+
+    size_t off = 0;
     bool ok = true;
-    size_t written = 0;
-    while (written < sizeof(header)) {
-        const ssize_t n = ::write(fd, header + written, sizeof(header) - written);
+    while (off < blob.size()) {
+        const ssize_t n = ::write(fd, blob.data() + off, blob.size() - off);
         if (n < 0) {
             if (errno == EINTR) {
                 continue;
@@ -204,23 +209,13 @@ bool UefiVarsLinux::write(const std::string& name, const std::vector<uint8_t>& d
             ok = false;
             break;
         }
-        written += size_t(n);
-    }
-    if (ok && !data.empty()) {
-        size_t off = 0;
-        while (off < data.size()) {
-            const ssize_t n = ::write(fd, data.data() + off, data.size() - off);
-            if (n < 0) {
-                if (errno == EINTR) {
-                    continue;
-                }
-                m_lastCode = errno;
-                *error = makeError("Cannot write UEFI variable", name);
-                ok = false;
-                break;
-            }
-            off += size_t(n);
+        if (n == 0) {
+            m_lastCode = EIO;
+            *error = makeError("Short write on UEFI variable", name);
+            ok = false;
+            break;
         }
+        off += size_t(n);
     }
     close(fd);
     if (!ok) {

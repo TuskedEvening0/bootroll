@@ -51,10 +51,12 @@ std::vector<std::string> scanBlockDevNames()
             continue;
         }
         // Virtual / ephemeral / RAID layers are out of scope for bootroll.
-        if (name.rfind("loop", 0) == 0 || name.rfind("ram", 0) == 0 ||
-            name.rfind("zram", 0) == 0 || name.rfind("rom", 0) == 0 ||
-            name.rfind("fd", 0) == 0 || name.rfind("sr", 0) == 0 ||
-            name.rfind("md", 0) == 0 || name.rfind("dm-", 0) == 0) {
+        // loop* stays visible: a losetup-attached image/VHD is the Linux
+        // equivalent of Windows attaching a VHD (sector editor target).
+        if (name.rfind("ram", 0) == 0 || name.rfind("zram", 0) == 0 ||
+            name.rfind("rom", 0) == 0 || name.rfind("fd", 0) == 0 ||
+            name.rfind("sr", 0) == 0 || name.rfind("md", 0) == 0 ||
+            name.rfind("dm-", 0) == 0) {
             continue;
         }
         names.push_back(name);
@@ -71,6 +73,17 @@ std::string devNodePath(const std::string& blockName)
 
 std::string modelOfBlockDev(const std::string& blockName)
 {
+    // loop device: show the backing image/VHD file name (that is what the
+    // user attached - mirrors "MS Virtual Disk" on Windows).
+    if (blockName.rfind("loop", 0) == 0) {
+        const std::string backing =
+            readFileTrimmed("/sys/block/" + blockName + "/loop/backing_file");
+        if (!backing.empty()) {
+            const size_t slash = backing.find_last_of('/');
+            return slash == std::string::npos ? backing : backing.substr(slash + 1);
+        }
+        return {};
+    }
     // SCSI/SATA/USB: device/model; NVMe: device/model too; MMC: device/name.
     std::string model =
         readFileTrimmed("/sys/block/" + blockName + "/device/model");
@@ -87,8 +100,8 @@ std::string busTypeOfBlockDev(const std::string& blockName)
     if (blockName.rfind("nvme", 0) == 0) {
         return "NVMe";
     }
-    if (blockName.rfind("vd", 0) == 0) {
-        return "Virtual"; // virtio disk (matches the isVhd detection contract)
+    if (blockName.rfind("vd", 0) == 0 || blockName.rfind("loop", 0) == 0) {
+        return "Virtual"; // virtio / attached image (isVhd detection contract)
     }
     if (blockName.rfind("mmcblk", 0) == 0) {
         return "MMC";

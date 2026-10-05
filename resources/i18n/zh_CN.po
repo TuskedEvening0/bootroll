@@ -929,6 +929,9 @@ msgstr "启动磁盘"
 msgid "Boot partition"
 msgstr "启动分区"
 
+msgid "Boot file"
+msgstr "引导文件"
+
 msgid "Partition"
 msgstr "分区"
 

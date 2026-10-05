@@ -19,7 +19,7 @@ bootroll 是 BOOTICEx64 的净室重写：引导扇区/BCD/UEFI 启动项管理�
 | M5 | 扇区编辑（HexEdit + HexView） | ✅ |
 | M6 | LEGAL/打包（内嵌许可、单文件 exe） | ✅ |
 | M7 | UEFI 启动项管理（NVRAM 读写 + ESP 文件浏览器） | ✅ |
-| **M8** | **Linux 后端（platform/linux + 渲染后端替换）** | **本次交接** |
+| **M8** | **Linux 后端（platform/linux + 渲染后端替换）** | **✅ 基本完成（验收 1-5、7 过；病盘实测因环境故障遗留，见 M8_ACCEPTANCE.md）** |
 
 ## 硬约束（不可违反）
 
@@ -77,3 +77,15 @@ LEGAL.md                      净室合规声明
 - 构建 0 错 0 警是门禁；新增 UI 字符串须同步 `resources/i18n/zh_CN.po` 与 `en_US.po`（msgfmt 不参与构建，tinygettext 直接读 po，嵌入由 cmake/EmbedBinary.cmake 完成，改 po 后需重新 configure）。
 - 日志：`bootroll.log`，每行 `YYYY-MM-DD HH:MM:SS [II|WW|EE] message`，首行 `---- boot <ver> (commit <hash>) ----`。
 - 代码注释/日志英文，对话与 po 译文中文。
+
+## Linux 构建与运行（M8 完成）
+
+```bash
+cmake --preset linux-gcc && cmake --build build/linux-gcc -j
+ctest --test-dir build/linux-gcc          # 64 用例 / 538 断言
+./build/linux-gcc/bin/bootroll
+```
+
+- Linux 侧技术选型（已决策）：GLFW + OpenGL3 渲染；zenity 子进程对话框（确认框/文件框）；pkexec 提权；efivarfs UEFI 变量；sysfs + 裸设备 IO 磁盘层。
+- Linux 专属文档：[M8_ACCEPTANCE.md](M8_ACCEPTANCE.md)（验收记录 + 偏差 + 事故 + 遗留清单）。
+- 非 root 运行属正常形态：磁盘出 stub + 红字提示 + 提权重启按钮（pkexec）；写 UEFI/扇区需要 root 或 disk 组。

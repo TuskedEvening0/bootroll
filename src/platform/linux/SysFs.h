@@ -15,8 +15,10 @@ std::string readFileTrimmed(const std::string& path);
 bool fileExists(const std::string& path);
 
 // /sys/block entries after filtering virtual/ephemeral devices
-// (loop*/ram*/zram*/rom*/fd*/sr* and md*/dm-* RAIDs, per M8_PLAN §3),
-// sorted lexicographically for a deterministic discovery order.
+// (ram*/zram*/rom*/fd*/sr* and md*/dm-* RAIDs, per M8_PLAN §3). loop* is
+// deliberately KEPT: a losetup-attached image/VHD file is the Linux
+// equivalent of Windows attaching a VHD, and the acceptance list requires
+// sector editing of image files. busType "Virtual" + backing-file model.
 std::vector<std::string> scanBlockDevNames();
 
 // "/dev/<name>" for a /sys/block entry name.

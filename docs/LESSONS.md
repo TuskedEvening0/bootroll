@@ -27,8 +27,7 @@
 
 ## 磁盘 / 文件系统
 
-8. **FAT32 判定用 BPB**（`rootEntries==0 && fatSize16==0`），不能用"簇数 > 65524"——Windows 100MB ESP 只有约 25600 簇会被误判 FAT16。
-9. **FAT 目录路径规范化**：FAT 规范允许"父=根"的 `..` 表项簇号为 0；连续两次 `..` 曾报 "Empty directory chain"。修复 = 进目录前先规范化（`.` 跳过、`..` 弹层、越界钳到根），listDir 过滤 `.`/`..`。
+8. **FAT32 判定用 BPB**（`rootEntries==0 && fatSize16==0`），不能用"簇数 > 65524"——Windows 100MB ESP 只有约 25600 簇会被误判 FAT16。9. **FAT 目录路径规范化**：FAT 规范允许"父=根"的 `..` 表项簇号为 0；连续两次 `..` 曾报 "Empty directory chain"。修复 = 进目录前先规范化（`.` 跳过、`..` 弹层、越界钳到根），listDir 过滤 `.`/`..`。
 10. **MEDIA_HARDDRIVE_DP 的规范 subType = 1**（0x03 是 Vendor-Defined）。曾错写 3 且解析只认 3，roundtrip 自洽掩盖了 bug（固件写的真 HD 节点解析不出）。教训：**roundtrip 自洽 ≠ 正确**，解析要认规范值并兼容旧自产值。
 11. **编辑保护**：带 HD 定位节点的 UEFI 条目在分区匹配失败（如磁盘拔出）时，从解析值重建 HdPathSpec 再打包，**永不降级为纯路径条目**；signatureType 任意值逐字节还原 signature。
 12. **写前自动备份 + 二次确认**是红线：UEFI 变量写前落 `*.uefibak` 文本（hex 为大端数值表示）；所有写/删类操作过原生确认框。测试只用 VHD/镜像文件。
@@ -39,3 +38,14 @@
 14. **commit 哈希经 CMake 注入**（`BOOTROLL_GIT_HASH`）：改完首次 commit 后需重新 configure 才会更新日志头/About 显示，"unknown" 不算 bug。
 15. **改 po 后需重新 configure**：翻译/字体是 configure 期嵌入（CMAKE_CONFIGURE_DEPENDS 已声明，正常会自动重跑）。
 16. **真机取证先于改代码**：M7 读不出条目两轮排查，最后靠日志 + 探针定位是 GUID 笔误而非 Hyper-V/权限。日志格式规范见 HANDOFF.md，遇问题先加日志取证再动手。
+
+## Linux 后端（M8 新增）
+
+17. **efivarfs 一次 write() = 整变量替换**（2026-10-05 真机事故，BootOrder 曾丢失后恢复）
+    - 内核对 efivarfs 文件的每次 `write()` 调用都执行一次完整 SetVariable：第一次写 attrs 头、第二次写 payload 时，payload 前 4 字节会被当作 attrs 再次 SetVariable → 固件拒绝（EIO），且**变量可能就此丢失**（`No BootOrder is set`）。
+    - 正确顺序：`unlink()` → `open(O_CREAT|O_EXCL)` → **单次 write(attrs+payload 合并缓冲)**。`UefiVarsLinux::write` 已按此实现。
+    - 事故靠写前备份恢复（探针预先落盘的 `*.uefibak`）——LESSONS #12 的备份红线再次救命；UI 写路径的自动备份在 Linux 同样生效（`backup/` 目录已实测）。
+
+18. **日志打印 moved-from 对象 = 恒为空壳**（App::pumpDiskEnum，Windows 期遗留、Linux 首次真机日志暴露）
+    - `d = std::move(r.disk)` 之后打印 `r.disk.model/partitions` → 恒为 "(unknown model), 0 partitions"，与 UI 实际显示相矛盾，误导排障两轮。
+    - 修复：先捕获日志字段（number/model/partCount）再 move。任何"先 move 进容器、后打日志"的写法都属同类。
