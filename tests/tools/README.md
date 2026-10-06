@@ -34,3 +34,19 @@ fusermount3 -uz /tmp/hangmnt  # 最后卸挂载点
   它的 shell 自身命令行）。
 - 门限低于 30s 会把 `losetup` 的探测序列卡进 D 状态；如需调整 `GATE_SECS`，
   不得低于 30。
+
+## m9probe.cpp — 字体解析 + fail-closed 探针（M9）
+
+在目标发行版容器内验证三类运行时行为：candidateFonts() 解析结果、
+zenity 缺失时 confirmDialog fail-closed、pkexec 缺失时 restartElevated
+fail-closed。四个场景（A 裸容器 / E2E 内嵌字体 / B 零 zh 覆盖 / D 全链）
+见 docs/DISTRO_NOTES.md §4。
+
+```bash
+g++ -std=c++20 -Isrc m9probe.cpp \
+    src/platform/linux/PlatformLinux.cpp src/platform/linux/DiskAccessLinux.cpp \
+    src/platform/linux/VolumeLinux.cpp src/platform/linux/SysFs.cpp \
+    src/platform/linux/UefiVarsLinux.cpp src/core/disk/PartitionTable.cpp \
+    src/core/bcd/Utf16.cpp -lpthread -o /tmp/m9probe
+/tmp/m9probe   # 退出码非 0 = 有 fail-closed 被破坏
+```

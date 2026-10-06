@@ -9,6 +9,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <map>
+#include <set>
 #include <sstream>
 #include <thread>
 
@@ -297,30 +298,66 @@ std::vector<FontCandidate> PlatformLinux::candidateFonts()
 {
     std::vector<FontCandidate> out;
 
+    // Files(+faces) that genuinely cover Simplified Chinese per fontconfig.
+    // fc-match alone is a FUZZY matcher: with no zh font installed it happily
+    // returns DejaVu, which ImGui would load and render as tofu boxes (and
+    // the embedded-font fallback would never trigger). Verifying the pick
+    // against fc-list :lang=zh-cn keeps that path honest: no zh coverage ->
+    // no candidate -> embedded NotoSansSC subset.
+    std::set<std::pair<std::string, int>> zh;
+    {
+        std::string list;
+        int code = 1;
+        if (runProcessCapture(
+                {"fc-list", ":lang=zh-cn", "--format", "%{file}|%{index}\n"},
+                &list, &code) &&
+            code == 0) {
+            size_t pos = 0;
+            while (pos < list.size()) {
+                size_t eol = list.find('\n', pos);
+                if (eol == std::string::npos) {
+                    eol = list.size();
+                }
+                const std::string entry = list.substr(pos, eol - pos);
+                pos = eol + 1;
+                const size_t bar = entry.rfind('|');
+                if (bar == std::string::npos || entry.empty()) {
+                    continue;
+                }
+                std::string f = entry.substr(0, bar);
+                const int idx = std::atoi(entry.c_str() + bar + 1);
+                if (!f.empty()) {
+                    zh.emplace(std::move(f), idx);
+                }
+            }
+        }
+    }
+
     // Resolve the SC face dynamically: fc-match returns the file AND the face
     // index within TTC collections. The upstream Noto Sans CJK ttc face order
     // is JP, KR, SC, TC, HK, Mono... (verified via fc-scan), so ImGui's
     // default face 0 would render Japanese glyph shapes for zh_CN text.
-    const char* patterns[] = {
-        "Noto Sans CJK SC:lang=zh-cn", // preferred family (exact face)
-        ":lang=zh-cn",                 // any zh-capable font (WQY, YaHei, ...)
-    };
-    for (const char* pattern : patterns) {
-        std::string line;
-        int code = 1;
-        if (runProcessCapture({"fc-match", "-f", "%{file}|%{index}", pattern},
-                              &line, &code) &&
-            code == 0) {
-            const size_t bar = line.rfind('|');
-            if (bar != std::string::npos) {
-                FontCandidate fc;
-                fc.path = line.substr(0, bar);
-                fc.faceIndex = std::atoi(line.c_str() + bar + 1);
-                if (fc.faceIndex < 0) {
-                    fc.faceIndex = 0;
-                }
-                if (!fc.path.empty() && fileExists(fc.path)) {
-                    out.push_back(std::move(fc));
+    if (!zh.empty()) {
+        const char* patterns[] = {
+            "Noto Sans CJK SC:lang=zh-cn", // preferred family (exact face)
+            ":lang=zh-cn",                 // any zh-capable font (WQY, ...)
+        };
+        for (const char* pattern : patterns) {
+            std::string line;
+            int code = 1;
+            if (runProcessCapture(
+                    {"fc-match", "-f", "%{file}|%{index}", pattern}, &line,
+                    &code) &&
+                code == 0) {
+                const size_t bar = line.rfind('|');
+                if (bar != std::string::npos) {
+                    std::string f = line.substr(0, bar);
+                    const int idx = std::atoi(line.c_str() + bar + 1);
+                    if (!f.empty() && zh.count({f, idx}) > 0 &&
+                        fileExists(f)) {
+                        out.push_back({std::move(f), idx < 0 ? 0 : idx});
+                        break;
+                    }
                 }
             }
         }

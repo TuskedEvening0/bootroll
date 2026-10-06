@@ -2,7 +2,7 @@
 
 > 写于 2026-10-06，M8 收官后规划。受众：下一任 Agent / 开发者。
 > 阅读顺序：本文 → [M9_PLAN.md](M9_PLAN.md)（M9 细化执行计划）→ [M8_PLAN.md](M8_PLAN.md) / [M8_ACCEPTANCE.md](M8_ACCEPTANCE.md)（上一里程碑样板）。
-> **状态：M9–M11 规划定稿。M9 已于 2026-10-06 开工**（前置：M8 后的提权/缩放/字体问题已修复，用户确认推进）。M10/M11 待前序里程碑验收后展开。
+> **状态：M9 已于 2026-10-06 完成验收**（矩阵 8 格全绿 + 字体/fail-closed 探针留证，见 [M9_ACCEPTANCE.md](M9_ACCEPTANCE.md) / [DISTRO_NOTES.md](DISTRO_NOTES.md)；版本 0.2.0）。下一步 **M10 打包与发布**（届时把本文 §2 展开为 M10_PLAN.md）。M11 待 1.0 发布后展开。
 
 ## 0. 已定决策（与用户确认，勿翻案）
 
