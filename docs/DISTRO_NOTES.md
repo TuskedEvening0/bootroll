@@ -42,6 +42,23 @@
 
 **待 M10 打包时实测**（元数据用，暂勿直接引用）：`zenity`/`zenity`/`zenity`、`policykit-1`/`polkit`/`polkit`、CJK 字体包名（Fedora `google-noto-sans-cjk-ttc-fonts`?、openSUSE `noto-sans-cjk-fonts`?、Arch `noto-fonts-cjk`）、RPM 系 xvfb 包名。
 
+## 2b. 打包阶段实测补充（M10，2026-10-06）
+
+以下包名/机制在打包容器内**实测验证**（scripts/packaging/*）：
+
+| 项 | Debian/Ubuntu | Fedora | openSUSE | Arch |
+|---|---|---|---|---|
+| 构建辅助 | `dpkg-dev` `lintian` `desktop-file-utils` | `rpm-build` `rpmlint` | `rpm-build` `rpmlint` | `base-devel`(镜像自带) |
+| 无头 X | `xvfb`（含 xvfb-run） | `xorg-x11-server-Xvfb` | `xorg-x11-server-Xvfb` | `xorg-server-xvfb` |
+| GL 运行时 | `libgl1 libglx-mesa0 libgl1-mesa-dri` | `libGL mesa-dri-drivers` | `Mesa-libGL1` | `mesa` |
+| 安装器 | `dpkg-deb`（dpkg 自带） | `dnf install ./x.rpm` | `zypper --non-interactive --no-gpg-checks install ./x.rpm`（unsigned 本地包必须 `--no-gpg-checks`） | `pacman -U` |
+| 已避坑 | — | `xvfb` 包名不存在；`which` 命令不存在（用 `command -v`） | `Mesa-libGL1`（大小写敏感）；`xvfb` 包名不存在 | makepkg 禁 root → 容器内建 builder 用户 |
+
+打包产物证据（dist/，SHA256SUMS）：`bootroll_0.2.0_amd64.deb`、`bootroll-0.2.0-1.fc44.x86_64.rpm`、`bootroll-0.2.0-1.x86_64.rpm`(tumbleweed)、`bootroll-0.2.0-1-x86_64.pkg.tar.zst`、`Bootroll-0.2.0-x86_64.AppImage`、`bootroll-0.2.0-linux-x86_64.tar.gz`。
+lintian/rpmlint 残留（记录不门禁）：deb 缺 changelog/man page；rpm spelling-error（专有名词）+ LEGAL.md 无 shebang（%license 文件）。
+
+AppImage：linuxdeploy（continuous，x86_64）sha256 `8aea8da0f7f7039d2a2cecb14657d752a222a5e1d3825caeef186c82f751cdd1`——脚本每次构建打印，正式发布前把 URL 换成固定 release tag 并以此 hash 校验。AppImage 内 squashfs 只读 → 便携日志/ini 写入静默失败（预期，进程存活冒烟替代日志断言）。
+
 ## 3. 下限审计修复（矩阵首轮发现，均已入库）
 
 1. **`HexEdit.h` 缺 `<cstddef>`**（gcc 12 报 `'size_t' has not been declared`；gcc 11/13+ 因传递包含路径不同而幸免）——已补 include。
