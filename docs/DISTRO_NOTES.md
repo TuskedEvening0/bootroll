@@ -20,7 +20,7 @@
 要点：
 - **cmake 3.22（22.04）< presets 所需 3.25** → 矩阵统一显式 `cmake -S . -B`（根 CMakeLists `cmake_minimum_required(3.21)` 兼容，presets 仅本机开发用）。
 - **GLFW 3.3（22.04/debian12）**：无 `glfwGetPlatform()` → `GlfwWindow::isWayland()` 已带 `GLFW_VERSION` 守卫；`GLFW_SCALE_TO_MONITOR`/content scale 为 3.3 原生特性 ✓；无 Wayland 分数缩放协议（整数缩放可用）。
-- GCC 14（debian13）首轮出现过一次 `-Wfree-nonheap-object`（new_allocator.h 内联链），复跑未复现——已知抖动型假阳性，未采取动作，留观察。
+- GCC 14（debian13，gcc 14.2）`-Wfree-nonheap-object` 假阳性：`UefiVarsLinux::write` 的 reserve+push_back 路径被报 "delete on pointer with nonzero offset [1, PTRDIFF_MAX]"。M9 矩阵首轮出现后未复现，M9 后 CI 上稳定复现 → **按行为不变的重构消除**（blob 定长构造 + 索引赋值，无 push_back），未使用编译旗标。
 
 ## 2. 依赖包名对照
 

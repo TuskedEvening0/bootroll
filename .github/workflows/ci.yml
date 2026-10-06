@@ -92,7 +92,7 @@ jobs:
 
   windows-experimental:
     name: windows-msvc (experimental)
-    runs-on: windows-latest
+    runs-on: windows-2022 # pinned: windows-latest (2025) no longer ships VS2022
     timeout-minutes: 30
     continue-on-error: true # unvalidated by the Windows agent yet - docs/HANDOFF_WIN.md
     steps:

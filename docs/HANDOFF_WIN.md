@@ -2,6 +2,11 @@
 
 > 2026-10-06，Linux 端 M9（发行版适配）+ M10（Linux 打包）完成后，整理给 Windows 端 Agent 的待办。Linux 侧共用代码的变更如下，**需要一次 MSVC 0 错 0 警回归 + ctest 确认**。
 
+## 0. CI Windows job 现状
+
+- `.github/workflows/ci.yml` 的 `windows-experimental` job **固定在 `windows-2022` runner**：windows-latest 已迁移到不含 VS2022 的镜像（VS 17 2022 generator 找不到实例，首跑已证实）。
+- 若要升级到新镜像/VS2026：改 runner 标签 + preset 的 generator（`Visual Studio 18 2026`），并重新验证 `BOOTROLL_MSVC_RUNTIME_LIBRARY` 静态 /MT 设置。
+
 ## 1. 影响共用代码的变更（Windows 需回归的点）
 
 | 变更 | 位置 | Windows 侧关注点 |

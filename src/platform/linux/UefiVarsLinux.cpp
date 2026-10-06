@@ -1,5 +1,6 @@
 #include "platform/linux/UefiVarsLinux.h"
 
+#include <algorithm>
 #include <cerrno>
 #include <cstdio>
 #include <cstring>
@@ -188,13 +189,16 @@ bool UefiVarsLinux::write(const std::string& name, const std::vector<uint8_t>& d
         return false;
     }
 
-    std::vector<uint8_t> blob;
-    blob.reserve(4 + data.size());
-    blob.push_back(uint8_t(attrs & 0xFF));
-    blob.push_back(uint8_t((attrs >> 8) & 0xFF));
-    blob.push_back(uint8_t((attrs >> 16) & 0xFF));
-    blob.push_back(uint8_t((attrs >> 24) & 0xFF));
-    blob.insert(blob.end(), data.begin(), data.end());
+    // Single write() = whole-variable replacement (LESSONS #17): attrs prefix
+    // and payload land in ONE buffer. Fixed size + direct indexing, no
+    // push_back - gcc 14 flags the reserve+push_back pattern with a bogus
+    // -Wfree-nonheap-object (offset range [1, PTRDIFF_MAX], GCC 14.2).
+    std::vector<uint8_t> blob(4 + data.size(), 0);
+    blob[0] = uint8_t(attrs & 0xFF);
+    blob[1] = uint8_t((attrs >> 8) & 0xFF);
+    blob[2] = uint8_t((attrs >> 16) & 0xFF);
+    blob[3] = uint8_t((attrs >> 24) & 0xFF);
+    std::copy(data.begin(), data.end(), blob.begin() + 4);
 
     size_t off = 0;
     bool ok = true;
