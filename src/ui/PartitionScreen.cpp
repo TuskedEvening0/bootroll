@@ -1,4 +1,5 @@
 #include "ui/PartitionScreen.h"
+#include "ui/ElevateHint.h"
 
 #include "app/App.h"
 #include "app/I18n.h"
@@ -322,6 +323,9 @@ void drawTable(PartUi& st)
 void PartitionScreen::drawBody(App& app)
 {
     PartUi& st = ui();
+
+    elevate::maybeShowModal(app);
+    elevate::drawBanner(app);
 
     // --- target row ---------------------------------------------------------------
     ImGui::TextUnformatted(T_("Target:"));

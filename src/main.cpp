@@ -127,16 +127,12 @@ int main(int argc, char** argv)
 
     bootroll::GlfwWindow window;
     const auto& settings = bootroll::Settings::instance();
-    // Scale the default size once on first run; later runs replay saved pixels.
-    const float dpi = platform->dpiScale();
-    int winW = settings.windowWidth;
-    int winH = settings.windowHeight;
-    if (!settings.windowSizeFromUser) {
-        winW = lroundf(winW * dpi);
-        winH = lroundf(winH * dpi);
-    }
+    // Default size: Wayland sizes are in points (the compositor applies the
+    // physical scale) and X11 initial sizing follows the monitor via
+    // GLFW_SCALE_TO_MONITOR, so unlike the Windows branch there is no manual
+    // DPI pre-scaling here. Later runs replay saved pixels on both platforms.
     if (!window.create((std::string("Bootroll ") + BOOTROLL_APP_VERSION).c_str(),
-                       winW, winH)) {
+                       settings.windowWidth, settings.windowHeight)) {
         return 1;
     }
 
@@ -145,6 +141,15 @@ int main(int argc, char** argv)
         return 1;
     }
     ImGui_ImplGlfw_InitForOpenGL(window.handle(), true); // installs callbacks
+
+    app.log(std::string("window platform: ") +
+            (window.isWayland() ? "wayland" : "x11"));
+
+    // First-frame DPI sync: App::init applied the pre-window default scale.
+    if (window.dpiScale() != app.dpiScale()) {
+        app.setDpiScale(window.dpiScale());
+        renderer.recreateFontTexture();
+    }
 
     bool running = true;
     while (running) {
@@ -156,6 +161,14 @@ int main(int argc, char** argv)
             renderer.resize(window.clientWidth(), window.clientHeight());
         }
         app.onResize(window.clientWidth(), window.clientHeight());
+
+        // Follow content-scale changes (monitor switch / compositor scale):
+        // rebuild style + font atlas (CPU) and the font texture (GPU), the
+        // same rhythm as the Win32 per-monitor-DPI block above.
+        if (window.dpiScale() != app.dpiScale()) {
+            app.setDpiScale(window.dpiScale());
+            renderer.recreateFontTexture();
+        }
 
         ImGui_ImplGlfw_NewFrame();
         renderer.newFrame();

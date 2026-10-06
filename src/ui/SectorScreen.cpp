@@ -1,4 +1,5 @@
 #include "ui/SectorScreen.h"
+#include "ui/ElevateHint.h"
 
 #include "app/App.h"
 #include "app/I18n.h"
@@ -281,6 +282,9 @@ bool writeStaged(App& app, SectorUi& st, const std::vector<uint8_t>& bytes, std:
 void SectorScreen::drawBody(App& app)
 {
     SectorUi& st = ui();
+
+    elevate::maybeShowModal(app);
+    elevate::drawBanner(app);
 
     // --- target row ---------------------------------------------------------------
     ImGui::TextUnformatted(T_("Target:"));

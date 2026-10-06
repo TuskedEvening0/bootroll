@@ -271,8 +271,9 @@ FirmwareType PlatformLinux::firmwareType()
 
 float PlatformLinux::dpiScale() const
 {
-    // X11/Wayland fractional scaling is deferred (M8_PLAN §7); GLFW reports
-    // a 1.0 scale for now.
+    // Pre-window default: the real per-monitor content scale is followed by
+    // the main loop via GlfwWindow::dpiScale() (glfwGetWindowContentScale,
+    // Wayland compositor scale / X11 Xft.dpi), which rebuilds style+fonts.
     return 1.0f;
 }
 
@@ -373,6 +374,16 @@ bool PlatformLinux::restartElevated(const std::string& args)
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
+}
+
+const char* PlatformLinux::elevateActionMsgId() const
+{
+    return "Restart as root";
+}
+
+const char* PlatformLinux::elevateDeclinedMsgId() const
+{
+    return "Restart as root was declined or failed.";
 }
 
 std::string PlatformLinux::exeDir() const

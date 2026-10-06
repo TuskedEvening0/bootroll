@@ -1,4 +1,5 @@
 #include "ui/PbrScreen.h"
+#include "ui/ElevateHint.h"
 
 #include "app/App.h"
 #include "app/I18n.h"
@@ -381,6 +382,8 @@ void installPbr(App& app, PbrUi& st)
 void PbrScreen::drawBody(App& app)
 {
     PbrUi& st = ui();
+    elevate::maybeShowModal(app);
+    elevate::drawBanner(app);
     const DiskInfo* disk = app.currentDisk();
     if (disk && st.partIndex >= (int)disk->partitions.size()) {
         st.partIndex = 0;

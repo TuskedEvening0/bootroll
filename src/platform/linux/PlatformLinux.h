@@ -26,6 +26,8 @@ public:
     std::vector<std::string> candidateFontPaths() override;
     bool isElevated() override;
     bool restartElevated(const std::string& args) override;
+    const char* elevateActionMsgId() const override;
+    const char* elevateDeclinedMsgId() const override;
     std::string iniPath() override;
     std::string logPath() override;
 

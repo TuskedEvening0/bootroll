@@ -243,6 +243,16 @@ bool PlatformWin::restartElevated(const std::string& args)
     return bootroll::restartElevated(wideFromUtf8(args).c_str());
 }
 
+const char* PlatformWin::elevateActionMsgId() const
+{
+    return "Restart as Administrator";
+}
+
+const char* PlatformWin::elevateDeclinedMsgId() const
+{
+    return "Restart as Administrator was declined or failed.";
+}
+
 std::string PlatformWin::exeDir() const
 {
     return dirOf(exePathUtf8());

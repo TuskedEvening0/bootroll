@@ -33,7 +33,9 @@ int openDevNode(const std::string& path, bool write)
     if (fd < 0) {
         std::string hint;
         if (errno == EACCES) {
-            hint = " (root privileges required - use the elevate button)";
+            // Technical hint only; the UI layer adds the localized guidance
+            // and the elevate action (ui/ElevateHint.cpp).
+            hint = " (root privileges required)";
         } else if (errno == ENOENT) {
             hint = " (device is gone)";
         }

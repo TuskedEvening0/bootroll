@@ -1,4 +1,5 @@
 #include "ui/MainScreen.h"
+#include "ui/ElevateHint.h"
 #include "app/App.h"
 #include "app/I18n.h"
 #include "app/Settings.h"
@@ -170,6 +171,9 @@ void MainScreen::drawTabBar(App& app)
 
 void MainScreen::drawBody(App& app)
 {
+    elevate::maybeShowModal(app);
+    elevate::drawBanner(app);
+
     const DiskInfo* disk = app.currentDisk();
     if (!disk) {
         ImGui::TextWrapped("%s", T_("No disk detected."));

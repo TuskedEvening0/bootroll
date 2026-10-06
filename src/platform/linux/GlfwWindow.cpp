@@ -1,5 +1,6 @@
 #include "platform/linux/GlfwWindow.h"
 
+#include <algorithm>
 #include <cstdio>
 
 namespace bootroll {
@@ -40,6 +41,10 @@ bool GlfwWindow::create(const char* title, int width, int height)
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
     glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
     glfwWindowHint(GLFW_VISIBLE, GLFW_TRUE);
+    // Scale the initial window size by the monitor content scale (X11; on
+    // Wayland this hint is a no-op because the compositor owns sizing, and
+    // surface sizes are already in points).
+    glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_TRUE);
 
     m_window = glfwCreateWindow(width, height, title, nullptr, nullptr);
     if (!m_window) {
@@ -72,6 +77,30 @@ bool GlfwWindow::pumpMessages()
 bool GlfwWindow::minimized() const
 {
     return !m_window || glfwGetWindowAttrib(m_window, GLFW_ICONIFIED) != 0;
+}
+
+float GlfwWindow::dpiScale() const
+{
+    if (!m_window) {
+        return 1.0f;
+    }
+    float xs = 1.0f;
+    float ys = 1.0f;
+    glfwGetWindowContentScale(m_window, &xs, &ys);
+    if (xs <= 0.0f) {
+        xs = 1.0f; // headless / undetermined scale
+    }
+    return std::clamp(xs, 1.0f, 3.0f); // same clamp as Win32Window::dpiScale()
+}
+
+bool GlfwWindow::isWayland() const
+{
+#if defined(GLFW_VERSION_MAJOR) && (GLFW_VERSION_MAJOR > 3 || \
+    (GLFW_VERSION_MAJOR == 3 && GLFW_VERSION_MINOR >= 4))
+    return glfwGetPlatform() == GLFW_PLATFORM_WAYLAND;
+#else
+    return false; // glfw < 3.4 has no platform query (X11 assumed)
+#endif
 }
 
 } // namespace bootroll

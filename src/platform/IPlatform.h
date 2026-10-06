@@ -75,8 +75,13 @@ public:
     virtual std::vector<std::string> candidateFontPaths() = 0;
 
     virtual bool isElevated() = 0;
-    // Restart this process elevated (UAC). Returns false if the user declined.
+    // Restart this process elevated (UAC/pkexec). Returns false if declined.
     virtual bool restartElevated(const std::string& args) = 0;
+
+    // UI-facing elevation strings as i18n msgids. The wording is
+    // platform-specific: Windows has "Administrator" (UAC), Linux has "root".
+    virtual const char* elevateActionMsgId() const = 0;
+    virtual const char* elevateDeclinedMsgId() const = 0;
 
     // Full path of the per-exe settings file (bootroll.ini next to the exe).
     virtual std::string iniPath() = 0;

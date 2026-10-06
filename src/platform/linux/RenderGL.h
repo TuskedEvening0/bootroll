@@ -18,6 +18,9 @@ public:
     void shutdown();
     // Nothing to reallocate for OpenGL (viewport is set every frame).
     void resize(int width, int height);
+    // Rebuild the font texture from the (rebuilt) ImGui font atlas after a
+    // DPI-scale change. GL counterpart of RenderDX11::recreateFontTexture().
+    void recreateFontTexture();
     void newFrame();
     void renderDrawData(ImDrawData* drawData);
     void present();

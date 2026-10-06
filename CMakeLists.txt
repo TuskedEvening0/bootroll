@@ -212,6 +212,7 @@ add_executable(bootroll ${BOOTROLL_EXECUTABLE_WIN32}
     src/ui/SectorScreen.h            src/ui/SectorScreen.cpp
     src/ui/UefiScreen.h              src/ui/UefiScreen.cpp
     src/ui/EspFileDialog.h           src/ui/EspFileDialog.cpp
+    src/ui/ElevateHint.h             src/ui/ElevateHint.cpp
     src/ui/AboutScreen.h             src/ui/AboutScreen.cpp
     src/ui/widgets/DiskPicker.h      src/ui/widgets/DiskPicker.cpp
     src/ui/widgets/HexView.h         src/ui/widgets/HexView.cpp

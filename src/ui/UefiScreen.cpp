@@ -1,4 +1,5 @@
 #include "ui/UefiScreen.h"
+#include "ui/ElevateHint.h"
 
 #include "app/App.h"
 #include "app/I18n.h"
@@ -744,6 +745,8 @@ void drawEntryTable(UefiUi& s)
 void drawBodyImpl(App& app)
 {
     UefiUi& s = ui();
+    elevate::maybeShowModal(app);
+    elevate::drawBanner(app);
     if (!s.attempted) {
         s.attempted = true;
         load(app, s);
@@ -753,17 +756,6 @@ void drawBodyImpl(App& app)
         ImGui::TextColored(kColError, "%s", s.readyError.c_str());
         if (ImGui::Button(T_("Refresh"))) {
             load(app, s);
-        }
-        if (app.platform()->firmwareType() == FirmwareType::Uefi &&
-            !app.platform()->isElevated()) {
-            ImGui::SameLine();
-            if (ImGui::Button(T_("Restart as Administrator"))) {
-                if (app.platform()->restartElevated("")) {
-                    app.requestExit(); // elevated instance takes over
-                } else {
-                    s.readyError = T_("Restart as Administrator was declined or failed.");
-                }
-            }
         }
         return;
     }

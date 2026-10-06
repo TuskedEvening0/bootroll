@@ -38,6 +38,14 @@ void RenderGL::resize(int width, int height)
     (void)height;
 }
 
+void RenderGL::recreateFontTexture()
+{
+    // Called after App::setDpiScale() rebuilt the style and font atlas.
+    if (m_initialized) {
+        ImGui_ImplOpenGL3_CreateDeviceObjects();
+    }
+}
+
 void RenderGL::newFrame()
 {
     int fbWidth = 0, fbHeight = 0;

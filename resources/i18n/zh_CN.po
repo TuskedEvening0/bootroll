@@ -982,3 +982,30 @@ msgstr "修改时间"
 
 msgid "<DIR>"
 msgstr "<DIR>"
+
+msgid "Restart as root"
+msgstr "以 root 身份重启"
+
+msgid "Restart as root was declined or failed."
+msgstr "以 root 身份重启被拒绝或失败。"
+
+msgid "Not running as root: disk contents cannot be accessed."
+msgstr "当前未以 root 运行：无法访问磁盘内容。"
+
+msgid "This page needs access to disk devices, which requires root privileges."
+msgstr "本页需要访问磁盘设备，这需要 root 权限。"
+
+msgid "You can also run this program manually with sudo."
+msgstr "也可以用 sudo 手动运行本程序。"
+
+msgid "Continue without elevation"
+msgstr "暂不提权，继续浏览"
+
+msgid "Root privileges required"
+msgstr "需要 root 权限"
+
+msgid "Not running as administrator: disk contents cannot be accessed."
+msgstr "当前未以管理员身份运行：无法访问磁盘内容。"
+
+msgid "This page needs administrator access to disk devices."
+msgstr "本页需要管理员权限访问磁盘设备。"

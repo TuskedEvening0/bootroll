@@ -21,6 +21,12 @@ public:
     GLFWwindow* handle() const { return m_window; }
     int clientWidth() const { return m_width; }
     int clientHeight() const { return m_height; }
+    // Live content scale (Wayland compositor scale / X11 Xft.dpi), clamped to
+    // [1, 3] like Win32Window::dpiScale(). Queried per call so the main loop
+    // can follow monitor/compositor changes, mirroring the Windows path.
+    float dpiScale() const;
+    // True when GLFW picked its Wayland backend (glfw >= 3.4; false otherwise).
+    bool isWayland() const;
 
 private:
     static void framebufferSizeCallback(GLFWwindow* window, int w, int h);
