@@ -216,17 +216,17 @@ std::string PlatformWin::systemBcdPath()
     return {};
 }
 
-std::vector<std::string> PlatformWin::candidateFontPaths()
+std::vector<FontCandidate> PlatformWin::candidateFonts()
 {
     wchar_t winDir[MAX_PATH] = {};
     GetWindowsDirectoryW(winDir, MAX_PATH);
     std::wstring fonts = std::wstring(winDir) + L"\\Fonts\\";
     const wchar_t* names[] = { L"msyh.ttc", L"msyh.ttf", L"msyhl.ttc", L"simsun.ttc" };
-    std::vector<std::string> out;
+    std::vector<FontCandidate> out;
     for (const wchar_t* n : names) {
         std::wstring p = fonts + n;
         if (fileExists(p)) {
-            out.push_back(utf8FromWide(p));
+            out.push_back({utf8FromWide(p), 0}); // face 0 = Microsoft YaHei (SC)
         }
     }
     return out;

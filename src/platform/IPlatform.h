@@ -19,6 +19,14 @@ enum class FirmwareType {
     Uefi,
 };
 
+// A CJK-capable font file plus the face to load from it. TTC collections
+// (Noto Sans CJK) carry one face per language - face 0 is JP, so the SC face
+// index must be resolved explicitly (fc-match on Linux).
+struct FontCandidate {
+    std::string path;
+    int faceIndex = 0; // face index within a TTC; 0 for plain TTF/OTF
+};
+
 // A mounted volume (logical drive / mount point) seen by the OS.
 struct VolumeInfo {
     std::string driveLetter;   // "C:" or "" (letter-less, e.g. ESP)
@@ -71,8 +79,8 @@ public:
     // Path of the running system's BCD ("C:\Boot\BCD" / ESP BCD), "" if not found.
     virtual std::string systemBcdPath() = 0;
 
-    // Preferred CJK-capable system font paths, best first ("" entries skipped).
-    virtual std::vector<std::string> candidateFontPaths() = 0;
+    // Preferred CJK-capable system fonts, best first (missing files skipped).
+    virtual std::vector<FontCandidate> candidateFonts() = 0;
 
     virtual bool isElevated() = 0;
     // Restart this process elevated (UAC/pkexec). Returns false if declined.

@@ -23,7 +23,7 @@ public:
     IUefiVars* uefiVars() override { return &m_uefi; }
     float dpiScale() const override;
     std::string systemBcdPath() override;
-    std::vector<std::string> candidateFontPaths() override;
+    std::vector<FontCandidate> candidateFonts() override;
     bool isElevated() override;
     bool restartElevated(const std::string& args) override;
     const char* elevateActionMsgId() const override;

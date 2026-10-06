@@ -137,10 +137,15 @@ void App::loadFonts(float scale)
     const float size = 16.0f * scale;
     const ImWchar* ranges = io.Fonts->GetGlyphRangesChineseSimplifiedCommon();
 
-    for (const std::string& path : m_platform->candidateFontPaths()) {
-        ImFont* f = io.Fonts->AddFontFromFileTTF(path.c_str(), size, nullptr, ranges);
+    for (const FontCandidate& fc : m_platform->candidateFonts()) {
+        ImFontConfig cfg;
+        cfg.FontNo = fc.faceIndex; // TTC face: 0 is JP in Noto Sans CJK ttc
+        ImFont* f = io.Fonts->AddFontFromFileTTF(fc.path.c_str(), size, &cfg, ranges);
         if (f) {
-            m_fontUsed = path;
+            m_fontUsed = fc.path;
+            if (fc.faceIndex != 0) {
+                m_fontUsed += " [face " + std::to_string(fc.faceIndex) + "]";
+            }
             break;
         }
     }

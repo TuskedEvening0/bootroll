@@ -293,27 +293,63 @@ std::string PlatformLinux::systemBcdPath()
     return {};
 }
 
-std::vector<std::string> PlatformLinux::candidateFontPaths()
+std::vector<FontCandidate> PlatformLinux::candidateFonts()
 {
-    static const char* kCandidates[] = {
-        // Noto Sans CJK SC (Debian/Arch package layouts)
-        "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
-        "/usr/share/fonts/noto-cjk/NotoSansCJK-Regular.ttc",
-        "/usr/share/fonts/noto-cjk/NotoSansCJKsc-Regular.otf",
-        "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
-        // WenQuanYi
-        "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
-        "/usr/share/fonts/wenquanyi/wqy-microhei/wqy-microhei.ttc",
-        "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",
-        "/usr/share/fonts/wenquanyi/wqy-zenhei/wqy-zenhei.ttc",
-        // Droid Sans Fallback
-        "/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf",
-        "/usr/share/fonts/droid/DroidSansFallbackFull.ttf",
+    std::vector<FontCandidate> out;
+
+    // Resolve the SC face dynamically: fc-match returns the file AND the face
+    // index within TTC collections. The upstream Noto Sans CJK ttc face order
+    // is JP, KR, SC, TC, HK, Mono... (verified via fc-scan), so ImGui's
+    // default face 0 would render Japanese glyph shapes for zh_CN text.
+    const char* patterns[] = {
+        "Noto Sans CJK SC:lang=zh-cn", // preferred family (exact face)
+        ":lang=zh-cn",                 // any zh-capable font (WQY, YaHei, ...)
     };
-    std::vector<std::string> out;
-    for (const char* p : kCandidates) {
-        if (fileExists(p)) {
-            out.push_back(p);
+    for (const char* pattern : patterns) {
+        std::string line;
+        int code = 1;
+        if (runProcessCapture({"fc-match", "-f", "%{file}|%{index}", pattern},
+                              &line, &code) &&
+            code == 0) {
+            const size_t bar = line.rfind('|');
+            if (bar != std::string::npos) {
+                FontCandidate fc;
+                fc.path = line.substr(0, bar);
+                fc.faceIndex = std::atoi(line.c_str() + bar + 1);
+                if (fc.faceIndex < 0) {
+                    fc.faceIndex = 0;
+                }
+                if (!fc.path.empty() && fileExists(fc.path)) {
+                    out.push_back(std::move(fc));
+                }
+            }
+        }
+    }
+
+    // Static fallback when fontconfig is unavailable (bare containers).
+    // kNotoCjkScFace: SC face within upstream Noto Sans CJK ttc collections.
+    constexpr int kNotoCjkScFace = 2;
+    static const struct {
+        const char* path;
+        int face;
+    } kStatic[] = {
+        {"/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc", kNotoCjkScFace},
+        {"/usr/share/fonts/noto-cjk/NotoSansCJK-Regular.ttc", kNotoCjkScFace},
+        {"/usr/share/fonts/noto-cjk/NotoSansCJKsc-Regular.otf", 0},
+        {"/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc", kNotoCjkScFace},
+        {"/usr/share/fonts/noto-cjk/NotoSansSC-Regular.otf", 0},
+        // WenQuanYi
+        {"/usr/share/fonts/truetype/wqy/wqy-microhei.ttc", 0},
+        {"/usr/share/fonts/wenquanyi/wqy-microhei/wqy-microhei.ttc", 0},
+        {"/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc", 0},
+        {"/usr/share/fonts/wenquanyi/wqy-zenhei/wqy-zenhei.ttc", 0},
+        // Droid Sans Fallback
+        {"/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf", 0},
+        {"/usr/share/fonts/droid/DroidSansFallbackFull.ttf", 0},
+    };
+    for (const auto& k : kStatic) {
+        if (fileExists(k.path)) {
+            out.push_back({k.path, k.face});
         }
     }
     return out;
