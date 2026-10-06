@@ -52,13 +52,16 @@ jobs:
               ;;
             dnf)
               dnf -y install --setopt=install_weak_deps=False \
-                gcc-c++ make cmake git glfw-devel mesa-libGL-devel
+                gcc-c++ make cmake git ca-certificates glfw-devel mesa-libGL-devel
               ;;
             zypper)
               zypper --gpg-auto-import-keys refresh
-              zypper --non-interactive install gcc-c++ make cmake git glfw-devel Mesa-libGL-devel
+              zypper --non-interactive install gcc-c++ make cmake git ca-certificates glfw-devel Mesa-libGL-devel
               ;;
             pacman)
+              # Refresh the keyring first: the base image can be older than
+              # the current signing keys, which fails -Syu with bad signatures.
+              pacman -Sy --noconfirm archlinux-keyring
               pacman -Syu --noconfirm --needed cmake glfw mesa git
               ;;
           esac
