@@ -14,3 +14,9 @@ BOOTICEx64.exe.i64
 *.nam
 *.til
 dist/
+
+# AI agents
+.trae/
+
+# Internal docs for agents (mainly roadmaps, plans and handovers)
+#docs/ # Note: There's still something useful which should not be purged.
