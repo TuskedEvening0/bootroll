@@ -243,6 +243,16 @@ else()
     # pthread: required for C++20 std::thread. GLFW target pulls X11/Wayland deps.
     find_package(Threads REQUIRED)
     target_link_libraries(bootroll PRIVATE imgui tinygettext glfw OpenGL::GL Threads::Threads)
+
+    # FHS install layout (M10). Portable semantics are unaffected: po/license/
+    # bootcode are embedded at configure time; the only runtime-external
+    # dependency is system fonts (see PlatformLinux::candidateFonts).
+    install(TARGETS bootroll RUNTIME DESTINATION bin)
+    install(FILES resources/packaging/bootroll.desktop
+            DESTINATION share/applications)
+    install(FILES resources/packaging/icon/bootroll-128.png
+            DESTINATION share/icons/hicolor/128x128/apps
+            RENAME bootroll.png)
 endif()
 
 # Crash triage: -DBOOTROLL_ASAN=ON builds the exe with AddressSanitizer

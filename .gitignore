@@ -13,3 +13,4 @@ BOOTICEx64.exe.i64
 *.id2
 *.nam
 *.til
+dist/

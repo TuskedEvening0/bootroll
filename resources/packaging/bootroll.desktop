@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Bootroll
+GenericName=Boot Manager Utility
+Comment=Manage boot sectors, BCD and UEFI boot entries
+Exec=bootroll
+Icon=bootroll
+Terminal=false
+Categories=System;
+Keywords=boot;UEFI;MBR;BCD;GRUB;bootloader;
+StartupNotify=false

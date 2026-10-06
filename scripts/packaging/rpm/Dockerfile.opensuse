@@ -1,0 +1,8 @@
+# M10 packaging: rpm builder (opensuse/tumbleweed; base image needs zypper refresh).
+FROM opensuse/tumbleweed:latest
+RUN zypper --gpg-auto-import-keys refresh \
+    && zypper --non-interactive install \
+        gcc-c++ make cmake git glfw-devel Mesa-libGL-devel \
+        rpm-build rpmlint \
+        xorg-x11-server-Xvfb Mesa-libGL1 xorg-x11-fonts-core \
+    && zypper clean -a

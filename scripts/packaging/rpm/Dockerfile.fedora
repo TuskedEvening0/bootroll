@@ -1,0 +1,7 @@
+# M10 packaging: rpm builder (fedora; opensuse variant swaps the base+installer).
+FROM fedora:latest
+RUN dnf -y install --setopt=install_weak_deps=False \
+        gcc-c++ make cmake git glfw-devel mesa-libGL-devel \
+        rpm-build rpmlint \
+        xorg-x11-server-Xvfb libGL mesa-dri-drivers xorg-x11-fonts-misc \
+    && dnf clean all

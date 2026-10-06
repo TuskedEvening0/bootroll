@@ -1,0 +1,29 @@
+# Maintainer: bootroll-dev <bootroll-dev@localhost>
+pkgname=bootroll
+pkgver=0.2.0
+pkgrel=1
+pkgdesc="Boot manager utility (BOOTICEx64 clean-room rewrite)"
+arch=('x86_64')
+url="https://localhost/bootroll"
+license=('GPL2' 'MIT')
+depends=('glfw' 'glibc' 'gcc-libs')
+optdepends=('zenity: native confirmation dialogs'
+            'polkit: privilege elevation'
+            'noto-fonts-cjk: CJK font rendering')
+makedepends=('cmake' 'glfw' 'mesa')
+source=("${pkgname}-${pkgver}.tar.gz")
+sha256sums=('SKIP')  # local pipeline (M10); switch to a pinned digest at release
+options=(!strip)
+
+build() {
+    cd "${pkgname}-${pkgver}"
+    cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+    cmake --build build -j"$(nproc)"
+}
+
+package() {
+    cd "${pkgname}-${pkgver}"
+    DESTDIR="$pkgdir" cmake --install build --prefix /usr
+    # Prune foreign install rules (tinygettext ships its own install()).
+    rm -rf "$pkgdir"/usr/lib "$pkgdir"/usr/include
+}
