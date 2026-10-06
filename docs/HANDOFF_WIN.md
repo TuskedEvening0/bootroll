@@ -38,10 +38,11 @@ ctest --test-dir build/win-msvc -C Release      # 64 用例 / 538 断言
 - 若 MSVC 对 `{utf8FromWide(p), 0}` 聚合初始化或 FontNo 有意见，按 MSVC 惯例修（不要动接口形状——Linux 端已按此定型）。
 - UI 手测：非管理员启动 → 各特权页应显示黄色横幅 + "Restart as Administrator" 按钮 + 一次性模态（UAC 拒绝后出现红色 declined 行为）。
 
-## 3. Windows 打包（M10 未覆盖，留待 Windows 端）
+## 3. Windows 打包（已定案：无打包管线）
 
-- ROADMAP 决策：M10 只做 Linux 五类产物；Windows 的安装器（NSIS/MSIX）或便携 zip 为独立工作项。
-- 可复用：`scripts/package.sh` 的编排模式（staging → 打包 → 安装冒烟 → 卸载校验）可平移；产物落 `dist/` + SHA256SUMS 的约定保持一致。
+- **用户决策（2026-10-06）：不做安装器/打包管线，直接以单个静态 exe 分发**（与 BOOTICE 分发方式一致）。
+- 依据：`win-msvc` preset 已静态 CRT（/MT），dumpbin /DEPENDENTS 仅系统 DLL（d3d11/D3DCOMPILER_47/IMM32/SETUPAPI/SHELL32/COMDLG32/KERNEL32/USER32/ole32/ADVAPI32/dbghelp，均为 Win10 内置），字体/po/许可/引导代码全内嵌 → Release 产物 `build/win-msvc/bin/Release/bootroll.exe`（3.27MB）即分发件，零运行库依赖。
+- `scripts/package.sh` 的编排模式仅适用于 Linux 侧；Windows 侧无需对应物。
 
 ## 4. 版本与发布线
 

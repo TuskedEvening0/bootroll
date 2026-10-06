@@ -2,7 +2,7 @@
 
 > 写于 2026-10-06，M8 收官后规划。受众：下一任 Agent / 开发者。
 > 阅读顺序：本文 → [M9_PLAN.md](M9_PLAN.md)（M9 细化执行计划）→ [M8_PLAN.md](M8_PLAN.md) / [M8_ACCEPTANCE.md](M8_ACCEPTANCE.md)（上一里程碑样板）。
-> **状态：M9、M10 已完成验收**（M9：矩阵 8 格全绿 + 字体/fail-closed 探针，[M9_ACCEPTANCE.md](M9_ACCEPTANCE.md)；M10：五类 Linux 产物 + 安装冒烟全绿，[M10_ACCEPTANCE.md](M10_ACCEPTANCE.md)；版本 0.2.0，Windows 侧见 [HANDOFF_WIN.md](HANDOFF_WIN.md)）。**Windows 回归已完成**（2026-10-06：MSVC 0 错 0 警 + 64 用例/538 断言全过 + 补 zh_CN.po 模态标题词条，详见 HANDOFF_WIN.md）。下一步：用户确认发布节奏（1.0.0-rc → 1.0.0，bump+tag 即可出全套产物）与 Windows 打包形态，随后 **M11 引导器快捷添加**。
+> **状态：M9、M10 已完成验收**（M9：矩阵 8 格全绿 + 字体/fail-closed 探针，[M9_ACCEPTANCE.md](M9_ACCEPTANCE.md)；M10：五类 Linux 产物 + 安装冒烟全绿，[M10_ACCEPTANCE.md](M10_ACCEPTANCE.md)；版本 0.2.0，Windows 侧见 [HANDOFF_WIN.md](HANDOFF_WIN.md)）。**Windows 回归已完成**（2026-10-06：MSVC 0 错 0 警 + 64 用例/538 断言全过 + 补 zh_CN.po 模态标题词条，详见 HANDOFF_WIN.md）。下一步：用户确认发布节奏（1.0.0-rc → 1.0.0，bump+tag 即可出全套产物），随后 **M11 引导器快捷添加**。
 
 ## 0. 已定决策（与用户确认，勿翻案）
 
@@ -11,7 +11,8 @@
 3. **打包全容器化**：所有包在对应发行版容器内构建（含 Arch 包），宿主零污染。
 4. **产物集合**：`.deb` / `.rpm` / `.pkg.tar.zst` + 便携 `tar.gz` + **AppImage**。
 5. **x86_64 only**（bootcode blob 为 x86 语义，不做其他架构承诺）。
-6. **版本线**：M9 收尾发 0.2.0；M10 产出 1.0.0-rc → **1.0.0 正式版**；M11 为 1.0 后特性迭代。版本号单一来源 = CMake project VERSION（当前 0.1.0，日志横幅 `boot 0.1.0 (commit …)`）。
+6. **Windows 分发 = 单个静态 exe**（2026-10-06 用户确认：不做 NSIS/MSIX/zip 管线；/MT + 全资源内嵌的 Release 产物即分发件，见 HANDOFF_WIN §3）。
+7. **版本线**：M9 收尾发 0.2.0；M10 产出 1.0.0-rc → **1.0.0 正式版**；M11 为 1.0 后特性迭代。版本号单一来源 = CMake project VERSION（当前 0.1.0，日志横幅 `boot 0.1.0 (commit …)`）。
 
 ## 1. M9 — 发行版适配与可移植性（摘要，细化见 M9_PLAN.md）
 
