@@ -1009,3 +1009,6 @@ msgstr "当前未以管理员身份运行：无法访问磁盘内容。"
 
 msgid "This page needs administrator access to disk devices."
 msgstr "本页需要管理员权限访问磁盘设备。"
+
+msgid "Administrator privileges required"
+msgstr "需要管理员权限"

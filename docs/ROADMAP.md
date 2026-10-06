@@ -2,7 +2,7 @@
 
 > 写于 2026-10-06，M8 收官后规划。受众：下一任 Agent / 开发者。
 > 阅读顺序：本文 → [M9_PLAN.md](M9_PLAN.md)（M9 细化执行计划）→ [M8_PLAN.md](M8_PLAN.md) / [M8_ACCEPTANCE.md](M8_ACCEPTANCE.md)（上一里程碑样板）。
-> **状态：M9、M10 已完成验收**（M9：矩阵 8 格全绿 + 字体/fail-closed 探针，[M9_ACCEPTANCE.md](M9_ACCEPTANCE.md)；M10：五类 Linux 产物 + 安装冒烟全绿，[M10_ACCEPTANCE.md](M10_ACCEPTANCE.md)；版本 0.2.0，Windows 侧见 [HANDOFF_WIN.md](HANDOFF_WIN.md)）。下一步：用户确认发布节奏（1.0.0-rc → 1.0.0，bump+tag 即可出全套产物），随后 **M11 引导器快捷添加**。
+> **状态：M9、M10 已完成验收**（M9：矩阵 8 格全绿 + 字体/fail-closed 探针，[M9_ACCEPTANCE.md](M9_ACCEPTANCE.md)；M10：五类 Linux 产物 + 安装冒烟全绿，[M10_ACCEPTANCE.md](M10_ACCEPTANCE.md)；版本 0.2.0，Windows 侧见 [HANDOFF_WIN.md](HANDOFF_WIN.md)）。**Windows 回归已完成**（2026-10-06：MSVC 0 错 0 警 + 64 用例/538 断言全过 + 补 zh_CN.po 模态标题词条，详见 HANDOFF_WIN.md）。下一步：用户确认发布节奏（1.0.0-rc → 1.0.0，bump+tag 即可出全套产物）与 Windows 打包形态，随后 **M11 引导器快捷添加**。
 
 ## 0. 已定决策（与用户确认，勿翻案）
 

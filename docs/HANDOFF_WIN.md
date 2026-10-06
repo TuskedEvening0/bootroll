@@ -2,6 +2,15 @@
 
 > 2026-10-06，Linux 端 M9（发行版适配）+ M10（Linux 打包）完成后，整理给 Windows 端 Agent 的待办。Linux 侧共用代码的变更如下，**需要一次 MSVC 0 错 0 警回归 + ctest 确认**。
 
+## ✅ 回归结果（2026-10-06，Windows 端 Agent）
+
+- MSVC（VS2022 Community, 17.x, Win SDK 10.0.26100）Release x64：**0 错 0 警**，`bootroll.exe` 产出。
+- ctest：**64 用例 / 538 断言全部通过**（doctest 单可执行，与 §2 预期一致）。
+- §1 变更点逐一核查：`candidateFonts()`（msyh.ttc 等 face 0）、`elevateActionMsgId()/elevateDeclinedMsgId()`、`ElevateHint` 的 `#ifdef _WIN32` 分支、`App::loadFonts` 的 `FontNo` —— 全部按 Linux 侧定型接口实现，无需改动。
+- **发现并修复 1 处遗漏**：`ElevateHint` Windows 模态标题 "Administrator privileges required" 缺 zh_CN.po 词条（Linux 侧 "Root privileges required" 有对应词条）→ 已补 "需要管理员权限"，重建后 hex 内嵌校验通过，测试全绿。
+- 待用户手测：非管理员启动 → 黄色横幅 + "Restart as Administrator" + 一次性模态（UAC 拒绝后红色 declined）。
+- Windows 打包（§3）形态待用户确认（NSIS / 便携 zip / MSIX）。
+
 ## 0. CI Windows job 现状
 
 - `.github/workflows/ci.yml` 的 `windows-experimental` job **固定在 `windows-2022` runner**：windows-latest 已迁移到不含 VS2022 的镜像（VS 17 2022 generator 找不到实例，首跑已证实）。
