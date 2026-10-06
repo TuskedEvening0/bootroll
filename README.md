@@ -11,6 +11,8 @@
 
 # Bootroll
 
+[![CI](https://github.com/TuskedEvening0/bootroll/actions/workflows/ci.yml/badge.svg)](https://github.com/TuskedEvening0/bootroll/actions/workflows/ci.yml) [![Package](https://github.com/TuskedEvening0/bootroll/actions/workflows/package.yml/badge.svg)](https://github.com/TuskedEvening0/bootroll/actions/workflows/package.yml)
+
 ##### A Trololololool for x86-64 Boot
 
 Bootroll是一个专为x86-64 IBM兼容机使用的，跨操作系统平台的，启动管理小工具。

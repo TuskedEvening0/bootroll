@@ -1,0 +1,107 @@
+# M9 build matrix on CI - mirrors scripts/matrix/ (same base images, same
+# package lists, same 0-warnings + ctest gates). Keep both in sync when the
+# dependency set changes (see docs/DISTRO_NOTES.md).
+#
+# The windows job is EXPERIMENTAL and owned by the Windows-side agent
+# (docs/HANDOFF_WIN.md): failures are visible but non-blocking.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  linux-matrix:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    container:
+      image: ${{ matrix.container }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: ubuntu2204-gcc11,  container: ubuntu:22.04,   pkger: apt,    cc: gcc,   cxx: g++ }
+          - { name: ubuntu2204-clang14, container: ubuntu:22.04,  pkger: apt,    cc: clang, cxx: clang++ }
+          - { name: debian12-gcc12,    container: debian:12,      pkger: apt,    cc: gcc,   cxx: g++ }
+          - { name: ubuntu2404-gcc13,  container: ubuntu:24.04,   pkger: apt,    cc: gcc,   cxx: g++ }
+          - { name: debian13-gcc14,    container: debian:13,      pkger: apt,    cc: gcc,   cxx: g++ }
+          - { name: fedora-gcc,        container: fedora:latest,  pkger: dnf,    cc: gcc,   cxx: g++ }
+          - { name: tumbleweed-gcc,    container: opensuse/tumbleweed:latest, pkger: zypper, cc: gcc, cxx: g++ }
+          - { name: arch-gcc,          container: archlinux:base-devel,       pkger: pacman, cc: gcc, cxx: g++ }
+    steps:
+      - name: Provision toolchain (${{ matrix.pkger }})
+        run: |
+          set -eu
+          case "${{ matrix.pkger }}" in
+            apt)
+              apt-get update -qq
+              PKGS="g++ make cmake git libglfw3-dev libgl1-mesa-dev ca-certificates"
+              if [ "${{ matrix.cc }}" = clang ]; then PKGS="$PKGS clang"; fi
+              DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends $PKGS
+              ;;
+            dnf)
+              dnf -y install --setopt=install_weak_deps=False \
+                gcc-c++ make cmake git glfw-devel mesa-libGL-devel
+              ;;
+            zypper)
+              zypper --gpg-auto-import-keys refresh
+              zypper --non-interactive install gcc-c++ make cmake git glfw-devel Mesa-libGL-devel
+              ;;
+            pacman)
+              pacman -Syu --noconfirm --needed cmake glfw mesa git
+              ;;
+          esac
+          ${{ matrix.cxx }} --version | head -1
+          cmake --version | head -1
+
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Configure + build (0 errors / 0 warnings)
+        run: |
+          set -eu
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
+                -DCMAKE_C_COMPILER=${{ matrix.cc }} \
+                -DCMAKE_CXX_COMPILER=${{ matrix.cxx }}
+          cmake --build build -j"$(nproc)" 2>&1 | tee /tmp/build.log
+          n=$(grep -ciE "warning|error" /tmp/build.log || true)
+          echo "warning/error lines: $n"
+          [ "$n" -eq 0 ]
+
+      - name: ctest (64 cases / 538 assertions)
+        run: |
+          set -eu
+          ctest --test-dir build -V 2>&1 | tee /tmp/ctest.log
+          grep -q "Status: SUCCESS" /tmp/ctest.log
+          grep -E "test cases:|assertions:" /tmp/ctest.log
+
+  windows-experimental:
+    name: windows-msvc (experimental)
+    runs-on: windows-latest
+    timeout-minutes: 30
+    continue-on-error: true # unvalidated by the Windows agent yet - docs/HANDOFF_WIN.md
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Configure + build (win-msvc preset)
+        run: |
+          cmake --preset win-msvc
+          cmake --build build/win-msvc --config Release
+
+      - name: ctest
+        run: |
+          ctest --test-dir build/win-msvc -C Release -V

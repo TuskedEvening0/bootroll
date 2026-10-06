@@ -82,6 +82,7 @@ LEGAL.md                      净室合规声明
 - 构建 0 错 0 警是门禁；新增 UI 字符串须同步 `resources/i18n/zh_CN.po` 与 `en_US.po`（msgfmt 不参与构建，tinygettext 直接读 po，嵌入由 cmake/EmbedBinary.cmake 完成，改 po 后需重新 configure）。
 - 日志：`bootroll.log`，每行 `YYYY-MM-DD HH:MM:SS [II|WW|EE] message`，首行 `---- boot <ver> (commit <hash>) ----`。
 - 代码注释/日志英文，对话与 po 译文中文。
+- CI：GitHub Actions——push/PR 跑 M9 发行版矩阵（8 格，0 错 0 警 + ctest 门禁），tag `v*` 触发打包并挂 GitHub Release；发布流程见 [CI.md](CI.md)，Windows job 为实验位（HANDOFF_WIN.md）。
 
 ## Linux 构建与运行（M8 完成）
 
