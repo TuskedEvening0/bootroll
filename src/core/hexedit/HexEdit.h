@@ -1,6 +1,7 @@
 #pragma once
 // Cursor + nibble editing model for the hex view (M5 sector editor).
 // Pure logic, no UI dependency, so the edit state machine is unit-testable.
+#include <cstddef>
 #include <cstdint>
 #include <vector>
 

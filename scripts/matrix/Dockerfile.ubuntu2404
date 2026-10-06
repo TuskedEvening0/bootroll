@@ -1,0 +1,11 @@
+# M9 build-matrix container images
+#
+# One Dockerfile per distro family, baking the toolchain so matrix runs stay
+# stateless and reproducible. Base tags pinned by tag name (digest pinning
+# optional; see docs/DISTRO_NOTES.md). The repo is mounted read-write at
+# /work by scripts/build-matrix.sh - nothing else is baked in.
+
+FROM ubuntu:24.04
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        g++ make cmake git libglfw3-dev libgl1-mesa-dev ca-certificates \
+    && rm -rf /var/lib/apt/lists/*

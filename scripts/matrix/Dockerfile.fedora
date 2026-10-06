@@ -1,0 +1,11 @@
+# M9 build-matrix container images
+#
+# One Dockerfile per distro family, baking the toolchain so matrix runs stay
+# stateless and reproducible. Base tags pinned by tag name (digest pinning
+# optional; see docs/DISTRO_NOTES.md). The repo is mounted read-write at
+# /work by scripts/build-matrix.sh - nothing else is baked in.
+
+FROM fedora:latest
+RUN dnf -y install --setopt=install_weak_deps=False \
+        gcc-c++ make cmake git glfw-devel mesa-libGL-devel \
+    && dnf clean all

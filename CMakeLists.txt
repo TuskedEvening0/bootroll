@@ -14,6 +14,14 @@ if(MSVC)
     add_compile_options(/W4 /permissive- /utf-8 /MP)
 else()
     add_compile_options(-Wall -Wextra -Wno-unused-parameter)
+    # GCC 12 has known -Wrestrict false positives on std::string concatenation
+    # ("offsets [2, 9223372036854775807]" nonsense reports); fixed upstream in
+    # GCC 13. Windows MSVC branch unaffected.
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU"
+       AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 12.0
+       AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 13.0)
+        add_compile_options(-Wno-restrict)
+    endif()
 endif()
 
 # ---------------------------------------------------------------------------
@@ -261,4 +269,5 @@ set_target_properties(bootroll PROPERTIES
 #   M5 : ui/SectorScreen, ui/widgets/HexView
 #   M7 : UEFI boot entry management (done)
 #   M8 : platform/linux backend + linux-gcc preset activation
+#   M9 : distro adaptation - gcc11 floor, build matrix, runtime font/dialog chains
 # ---------------------------------------------------------------------------

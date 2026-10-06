@@ -3,7 +3,7 @@
 > 前置阅读：[ROADMAP.md](ROADMAP.md)（M9–M11 总览与已定决策）→ HANDOFF.md → ARCHITECTURE.md → PLATFORM_SEAMS.md → LESSONS.md。
 > 里程碑定义（根 CMakeLists.txt 尾注，开工时追加）：`M9 : distro adaptation — gcc11 floor, build matrix, runtime font/dialog chains`。
 > 决策记录（2026-10-05/06 与用户确认，详见 ROADMAP.md §0）：三段式；编译器下限 **gcc 11**（Ubuntu 22.04）；打包全容器化；产物三原生包 + tar.gz + AppImage。
-> **启动前置**：用户当前已知问题修复完毕后再开工（2026-10-06 指示：暂不推进）。
+> **启动前置**：已满足——M8 后的提权 UX / Wayland 缩放 / SC 字体问题已修复（2233256、f76268a），用户于 2026-10-06 确认开工。
 
 ## 0. 目标与验收（先看这个）
 

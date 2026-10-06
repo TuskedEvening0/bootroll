@@ -1,0 +1,14 @@
+# M9 build-matrix container images
+#
+# One Dockerfile per distro family, baking the toolchain so matrix runs stay
+# stateless and reproducible. Base tags pinned by tag name (digest pinning
+# optional; see docs/DISTRO_NOTES.md). The repo is mounted read-write at
+# /work by scripts/build-matrix.sh - nothing else is baked in.
+
+FROM opensuse/tumbleweed:latest
+# Refresh first: the base image ships no repo metadata and zypper install
+# would otherwise fail with exit 106.
+RUN zypper --gpg-auto-import-keys refresh \
+    && zypper --non-interactive install \
+        gcc-c++ make cmake git glfw-devel Mesa-libGL-devel \
+    && zypper clean -a
