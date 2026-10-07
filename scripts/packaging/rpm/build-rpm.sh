@@ -57,7 +57,7 @@ if [ $rc -ne 124 ]; then
     tail -8 /tmp/app.log
     exit 1
 fi
-grep -E "boot 0\.|disks enumerated|font:" /usr/bin/bootroll.log | head -4
+grep -E "boot [0-9]+\.|disks enumerated|font:" /usr/bin/bootroll.log | head -4
 
 echo "== rpmlint =="
 rpmlint "$RPM" > "/work/dist/reports/rpmlint-${TAG}-${VER}.txt" 2>&1 || true

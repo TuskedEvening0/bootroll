@@ -13,7 +13,8 @@ if [ "${1:-build}" = build ]; then
     tar --exclude=.git --exclude=build --exclude=dist \
         -czf /tmp/src/bootroll-${VER}.tar.gz \
         --transform "s,^\.,bootroll-${VER}," .
-    cp scripts/packaging/arch/PKGBUILD /tmp/src/
+    # Inject pkgver from project VERSION (single source of truth, same rule as rpm).
+    sed "s/^pkgver=.*/pkgver=${VER}/" scripts/packaging/arch/PKGBUILD > /tmp/src/PKGBUILD
     chown -R builder:builder /tmp/src
     su builder -c "cd /tmp/src && makepkg -f --skipinteg --noconfirm > /tmp/makepkg.log 2>&1" \
         || { tail -25 /tmp/makepkg.log; exit 1; }
@@ -44,7 +45,7 @@ if [ $rc -ne 124 ]; then
     tail -8 /tmp/app.log
     exit 1
 fi
-grep -E "boot 0\.|disks enumerated|font:" /usr/bin/bootroll.log | head -4
+grep -E "boot [0-9]+\.|disks enumerated|font:" /usr/bin/bootroll.log | head -4
 
 echo "== remove =="
 pacman -R --noconfirm bootroll > /dev/null 2>&1
