@@ -5,11 +5,15 @@
 #include "app/I18n.h"
 #include "core/util/LocalTime.h"
 #include "core/disk/DiskInfo.h"
+#include "core/fat/FatVolume.h"
+#include "core/uefi/LoaderPresets.h"
 #include "core/uefi/UefiVars.h"
 #include "imgui.h"
 #include "platform/IUefiVars.h"
 #include "ui/EspFileDialog.h"
 
+#include <algorithm>
+#include <cctype>
 #include <cstdio>
 #include <cstring>
 #include <ctime>
@@ -18,8 +22,10 @@
 #include <functional>
 #include <iterator>
 #include <map>
+#include <mutex>
 #include <set>
 #include <string>
+#include <thread>
 #include <utility>
 #include <vector>
 
@@ -36,16 +42,11 @@ const ImVec4 kColError = ImVec4(1.0f, 0.45f, 0.45f, 1.0f);
 const ImVec4 kColOk = ImVec4(0.5f, 0.8f, 0.5f, 1.0f);
 const ImVec4 kColWarn = ImVec4(1.0f, 0.85f, 0.3f, 1.0f);
 
-// GPT type GUID of an EFI System Partition.
-constexpr const char* kEspTypeGuid = "c12a7328-f81f-11d2-ba4b-00a0c93ec93b";
-
+// GPT type GUID of an EFI System Partition: shared implementation in
+// core/disk (DiskInfo::isEspTypeGuid, also used by EspFileDialog).
 bool isEspPartition(const PartitionInfo& p)
 {
-    std::string g = p.gptTypeGuid;
-    for (char& c : g) {
-        c = (char)std::tolower((unsigned char)c);
-    }
-    return g == kEspTypeGuid;
+    return isEspTypeGuid(p.gptTypeGuid);
 }
 
 // GUID "00112233-4455-6677-8899-AABBCCDDEEFF" -> 16 bytes in the mixed-endian
@@ -114,6 +115,142 @@ std::vector<uint8_t> u16Bytes(uint16_t v)
     return { uint8_t(v & 0xFF), uint8_t(v >> 8) };
 }
 
+// --- M11 quick-add: ESP loader scan (worker thread + incremental harvest) ---
+// Follows the two-phase disk enumeration pattern (LESSONS #1): the probe runs
+// detached on shared_ptr state, so a stalled device cannot freeze the UI and
+// the worker stays safe even if the App is torn down mid-scan.
+struct LoaderScan {
+    struct Candidate {
+        int diskIdx = -1;
+        int partIdx = -1;
+        uint32_t diskNumber = 0;
+        uint64_t partOffset = 0;
+        uint32_t sectorSize = 0;
+        std::string label; // "Disk 0 / Partition 1 (ESP)"
+    };
+    struct Row {
+        Candidate cand;
+        LoaderHit hit;
+    };
+    struct Shared {
+        std::mutex mutex;
+        bool running = false;
+        bool done = false;
+        std::vector<Row> rows;           // incremental hits
+        std::vector<std::string> errors; // per-ESP probe failures (raw, English)
+    };
+
+    std::shared_ptr<Shared> shared;
+    std::vector<Row> view;   // UI copy, rebuilt per frame from Shared
+    std::vector<std::string> errorView;
+    bool running = false;
+
+    // Snapshot ESP candidates and launch the probe worker. Returns false when
+    // there is no ESP to scan (state untouched).
+    bool start(App& app);
+    // UI thread: drain current results/errors into the view copies.
+    void pump();
+};
+
+bool LoaderScan::start(App& app)
+{
+    std::vector<Candidate> cands;
+    const std::vector<DiskInfo>& disks = app.disks();
+    for (size_t di = 0; di < disks.size(); ++di) {
+        const DiskInfo& d = disks[di];
+        for (size_t pi = 0; pi < d.partitions.size(); ++pi) {
+            const PartitionInfo& p = d.partitions[pi];
+            if (!isEspPartition(p)) {
+                continue;
+            }
+            Candidate c;
+            c.diskIdx = int(di);
+            c.partIdx = int(pi);
+            c.diskNumber = d.number;
+            c.partOffset = p.offsetBytes;
+            c.sectorSize = d.sectorSize;
+            c.label = diskShortName(d) + " / " + T_("Partition") + " " +
+                      std::to_string(p.number) + " (ESP)";
+            cands.push_back(std::move(c));
+        }
+    }
+    if (cands.empty()) {
+        return false;
+    }
+
+    shared = std::make_shared<Shared>();
+    view.clear();
+    errorView.clear();
+    running = true;
+    {
+        std::lock_guard<std::mutex> lk(shared->mutex);
+        shared->running = true;
+        shared->done = false;
+        shared->rows.clear();
+        shared->errors.clear();
+    }
+    std::shared_ptr<Shared> st = shared;
+    std::shared_ptr<IDiskAccess> diskAccess = app.sharedDiskAccess();
+    std::thread([st, diskAccess, cands = std::move(cands)]() {
+        for (const Candidate& c : cands) {
+            FatVolume vol;
+            const uint32_t diskSector = c.sectorSize != 0 ? c.sectorSize : 512;
+            FatVolumeReader reader = [diskAccess, c, diskSector](
+                                         uint64_t off, uint32_t bytes,
+                                         uint8_t* out) -> bool {
+                // Raw disk I/O needs disk-sector aligned ranges; widen + slice
+                // (EspFileDialog's reader, worker-side copy).
+                const uint64_t absStart = c.partOffset + off;
+                const uint64_t aligned = absStart - absStart % diskSector;
+                const uint64_t absEnd = absStart + bytes;
+                const uint64_t alignedEnd =
+                    absEnd + (diskSector - absEnd % diskSector) % diskSector;
+                std::vector<uint8_t> buf(size_t(alignedEnd - aligned));
+                try {
+                    diskAccess->readSectors(c.diskNumber, aligned, buf.data(),
+                                            buf.size());
+                } catch (const std::exception&) {
+                    return false;
+                }
+                std::memcpy(out, buf.data() + (absStart - aligned), bytes);
+                return true;
+            };
+            std::string ferr;
+            if (!vol.open(std::move(reader), &ferr)) {
+                std::lock_guard<std::mutex> lk(st->mutex);
+                st->errors.push_back(c.label + ": " + ferr);
+                continue;
+            }
+            // Probe contract: read-only path existence on this ESP.
+            const auto exists = [&vol](const std::string& path) {
+                FatDirEntry e;
+                std::string err;
+                return vol.findEntry(path, &e, &err) && !e.isDir;
+            };
+            const std::vector<LoaderHit> hits = detectEspLoaders(exists);
+            std::lock_guard<std::mutex> lk(st->mutex);
+            for (const LoaderHit& h : hits) {
+                st->rows.push_back({c, h});
+            }
+        }
+        std::lock_guard<std::mutex> lk(st->mutex);
+        st->running = false;
+        st->done = true;
+    }).detach();
+    return true;
+}
+
+void LoaderScan::pump()
+{
+    if (!shared) {
+        return;
+    }
+    std::lock_guard<std::mutex> lk(shared->mutex);
+    view = shared->rows;
+    errorView = shared->errors;
+    running = shared->running;
+}
+
 struct UefiUi {
     bool attempted = false;  // load() tried at least once
     bool loaded = false;     // variable snapshot valid
@@ -140,6 +277,7 @@ struct UefiUi {
     int editDiskIdx = -1;     // index into App::disks()
     int editPartIdx = -1;     // index into disk.partitions
     EspFileDialog espDialog;
+    LoaderScan loaderScan; // M11 quick-add scan state
     std::string error; // red status line
     std::string info;  // green status line
 };
@@ -433,6 +571,105 @@ bool matchHdNode(App& app, const BootEntry& e, int* diskIdx, int* partIdx)
     return true;
 }
 
+// Build the MEDIA_HARDDRIVE_DP locator node for a disk/partition pair.
+// Returns false (with *err) when the selection is unusable; an unreadable MBR
+// signature degrades to signatureType 0 so the entry stays valid. Shared by
+// the manual add/edit form and the M11 quick-add flow.
+bool buildHdSpec(App& app, int diskIdx, int partIdx, HdPathSpec* hd,
+                 std::string* err)
+{
+    const std::vector<DiskInfo>& disks = app.disks();
+    if (diskIdx < 0 || diskIdx >= int(disks.size())) {
+        *err = T_("Select a boot disk and partition first.");
+        return false;
+    }
+    const DiskInfo& d = disks[size_t(diskIdx)];
+    if (partIdx < 0 || partIdx >= int(d.partitions.size())) {
+        *err = T_("Select a boot disk and partition first.");
+        return false;
+    }
+    const PartitionInfo& p = d.partitions[size_t(partIdx)];
+    if (d.sectorSize == 0 || p.offsetBytes % d.sectorSize != 0) {
+        *err = T_("The partition start is not sector aligned.");
+        return false;
+    }
+    hd->partition = p.number;
+    hd->startLba = p.offsetBytes / d.sectorSize;
+    hd->sizeLba = p.sizeBytes / d.sectorSize;
+    if (p.style == PartitionStyle::Gpt) {
+        uint8_t sig[16] = {};
+        if (guidStringToBytes(p.gptPartGuid, sig)) {
+            hd->signature.assign(sig, sig + 16);
+            hd->signatureType = 2;
+        }
+    } else if (p.style == PartitionStyle::Mbr) {
+        std::vector<uint8_t> mbr(d.sectorSize, 0);
+        try {
+            app.diskAccess()->readSectors(d.number, 0, mbr.data(), mbr.size());
+            hd->signature.assign(16, 0);
+            std::copy(mbr.begin() + 0x1B8, mbr.begin() + 0x1BC, hd->signature.begin());
+            hd->signatureType = 1;
+        } catch (const std::exception&) {
+            hd->signatureType = 0; // keep the entry valid without a signature
+        }
+    }
+    return true;
+}
+
+bool entryPathExists(const UefiUi& s, const std::string& path)
+{
+    auto lower = [](std::string v) {
+        for (char& c : v) {
+            c = (char)std::tolower((unsigned char)c);
+        }
+        return v;
+    };
+    const std::string want = lower(path);
+    for (const BootEntry& e : s.entries) {
+        if (lower(e.path) == want) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// One-click create for a scanned loader (M11): preset description + path,
+// HDD locator from the scanned partition, free Boot#### slot, appended to
+// BootOrder - through the same guarded write (backup + confirm) as the
+// manual form.
+void quickAddLoader(App& app, UefiUi& s, const LoaderScan::Row& row)
+{
+    HdPathSpec hd {};
+    std::string hdErr;
+    if (!buildHdSpec(app, row.cand.diskIdx, row.cand.partIdx, &hd, &hdErr)) {
+        s.error = hdErr;
+        s.info.clear();
+        return;
+    }
+    // bit 0 = ACTIVE (same default as the manual form).
+    const std::vector<uint8_t> raw =
+        packLoadOptionFull(0x1, row.hit.description, &hd, row.hit.efiPath);
+    const uint16_t num = nextFreeBootNumber(usedNumbers(s));
+    const std::string name = bootVarName(num);
+    std::vector<uint16_t> order;
+    for (const BootEntry& e : s.entries) {
+        order.push_back(e.number);
+    }
+    order.push_back(num); // new entries join the end of BootOrder
+    const std::vector<uint8_t> orderBytes = encodeBootOrder(order);
+    const std::string q =
+        std::string(T_("Create this UEFI boot entry from the scanned loader?")) +
+        "\n\n" + name + "  " + row.hit.description + "\n" + row.hit.efiPath +
+        "\n" + row.cand.label;
+    guardedWrite(app, s, q,
+                 [name, raw, orderBytes](IUefiVars* uv, std::string* err) {
+                     if (!uv->write(name, raw, kVarAttrs, err)) {
+                         return false;
+                     }
+                     return uv->write("BootOrder", orderBytes, kVarAttrs, err);
+                 });
+}
+
 void applyEdit(App& app, UefiUi& s)
 {
     const std::string desc = s.editDesc;
@@ -448,43 +685,11 @@ void applyEdit(App& app, UefiUi& s)
     HdPathSpec hd {};
     const HdPathSpec* hdPtr = nullptr;
     if (s.editDeviceType == 0) {
-        const std::vector<DiskInfo>& disks = app.disks();
-        if (s.editDiskIdx < 0 || s.editDiskIdx >= int(disks.size())) {
-            s.error = T_("Select a boot disk and partition first.");
+        std::string hdErr;
+        if (!buildHdSpec(app, s.editDiskIdx, s.editPartIdx, &hd, &hdErr)) {
+            s.error = hdErr;
             s.info.clear();
             return;
-        }
-        const DiskInfo& d = disks[size_t(s.editDiskIdx)];
-        if (s.editPartIdx < 0 || s.editPartIdx >= int(d.partitions.size())) {
-            s.error = T_("Select a boot disk and partition first.");
-            s.info.clear();
-            return;
-        }
-        const PartitionInfo& p = d.partitions[size_t(s.editPartIdx)];
-        if (d.sectorSize == 0 || p.offsetBytes % d.sectorSize != 0) {
-            s.error = T_("The partition start is not sector aligned.");
-            s.info.clear();
-            return;
-        }
-        hd.partition = p.number;
-        hd.startLba = p.offsetBytes / d.sectorSize;
-        hd.sizeLba = p.sizeBytes / d.sectorSize;
-        if (p.style == PartitionStyle::Gpt) {
-            uint8_t sig[16] = {};
-            if (guidStringToBytes(p.gptPartGuid, sig)) {
-                hd.signature.assign(sig, sig + 16);
-                hd.signatureType = 2;
-            }
-        } else if (p.style == PartitionStyle::Mbr) {
-            std::vector<uint8_t> mbr(d.sectorSize, 0);
-            try {
-                app.diskAccess()->readSectors(d.number, 0, mbr.data(), mbr.size());
-                hd.signature.assign(16, 0);
-                std::copy(mbr.begin() + 0x1B8, mbr.begin() + 0x1BC, hd.signature.begin());
-                hd.signatureType = 1;
-            } catch (const std::exception&) {
-                hd.signatureType = 0; // keep the entry valid without a signature
-            }
         }
         hdPtr = &hd;
     } else if (!s.editNew) {
@@ -880,6 +1085,71 @@ void drawBodyImpl(App& app)
         ImGui::TextColored(kColWarn, "*");
         ImGui::SameLine();
         ImGui::TextUnformatted(T_("Order changed. Press Save Order to write BootOrder."));
+    }
+
+    // --- M11: quick-add from the ESP loader scan ---
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::TextUnformatted(T_("Quick add from ESP"));
+    ImGui::SameLine();
+    ImGui::TextDisabled("%s",
+                        T_("Scan all ESPs for systemd-boot / Limine / rEFInd and create a Boot#### entry."));
+    s.loaderScan.pump();
+    ImGui::BeginDisabled(s.loaderScan.running);
+    if (ImGui::Button(T_("Scan ESP for known loaders"))) {
+        if (!s.loaderScan.start(app)) {
+            s.error = T_("No EFI System Partition found.");
+            s.info.clear();
+        } else {
+            s.error.clear();
+            s.info.clear();
+        }
+    }
+    ImGui::EndDisabled();
+    if (s.loaderScan.running) {
+        ImGui::SameLine();
+        ImGui::TextColored(kColWarn, "%s", T_("Scanning..."));
+    }
+    if (!s.loaderScan.view.empty()) {
+        if (ImGui::BeginTable("##loaderhits", 4,
+                              ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+                                  ImGuiTableFlags_SizingStretchProp)) {
+            ImGui::TableSetupColumn(T_("Loader"), ImGuiTableColumnFlags_WidthFixed, 170);
+            ImGui::TableSetupColumn(T_("Location"), ImGuiTableColumnFlags_WidthFixed, 190);
+            ImGui::TableSetupColumn(T_("Path"));
+            ImGui::TableSetupColumn(T_("Add"), ImGuiTableColumnFlags_WidthFixed, 90);
+            ImGui::TableHeadersRow();
+            for (size_t i = 0; i < s.loaderScan.view.size(); ++i) {
+                const LoaderScan::Row& row = s.loaderScan.view[i];
+                ImGui::TableNextRow();
+                ImGui::TableSetColumnIndex(0);
+                ImGui::TextUnformatted(row.hit.description.c_str());
+                if (!row.hit.note.empty()) {
+                    ImGui::TextDisabled("%s", row.hit.note.c_str());
+                }
+                ImGui::TableSetColumnIndex(1);
+                ImGui::TextUnformatted(row.cand.label.c_str());
+                ImGui::TableSetColumnIndex(2);
+                ImGui::TextUnformatted(row.hit.efiPath.c_str());
+                if (entryPathExists(s, row.hit.efiPath)) {
+                    ImGui::TextDisabled("%s", T_("Already in boot entries"));
+                }
+                ImGui::TableSetColumnIndex(3);
+                ImGui::PushID(int(i));
+                if (ImGui::Button(T_("Add"))) {
+                    quickAddLoader(app, s, row);
+                }
+                ImGui::PopID();
+            }
+            ImGui::EndTable();
+        }
+    }
+    for (const std::string& e : s.loaderScan.errorView) {
+        ImGui::TextColored(kColError, "%s", e.c_str());
+    }
+    if (s.loaderScan.shared != nullptr && !s.loaderScan.running &&
+        s.loaderScan.view.empty() && s.loaderScan.errorView.empty()) {
+        ImGui::TextDisabled("%s", T_("No known loaders found on any ESP."));
     }
 
     ImGui::Spacing();

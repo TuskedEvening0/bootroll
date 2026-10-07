@@ -1012,3 +1012,36 @@ msgstr "本页需要管理员权限访问磁盘设备。"
 
 msgid "Administrator privileges required"
 msgstr "需要管理员权限"
+
+msgid "Quick add from ESP"
+msgstr "ESP 引导器快捷添加"
+
+msgid "Scan all ESPs for systemd-boot / Limine / rEFInd and create a Boot#### entry."
+msgstr "扫描所有 ESP 中的 systemd-boot / Limine / rEFInd，一键创建 Boot#### 启动项。"
+
+msgid "Scan ESP for known loaders"
+msgstr "扫描 ESP 中的已知引导器"
+
+msgid "No EFI System Partition found."
+msgstr "未找到 EFI 系统分区（ESP）。"
+
+msgid "Scanning..."
+msgstr "扫描中……"
+
+msgid "Loader"
+msgstr "引导器"
+
+msgid "Location"
+msgstr "位置"
+
+msgid "Add"
+msgstr "添加"
+
+msgid "Already in boot entries"
+msgstr "已存在于启动项"
+
+msgid "No known loaders found on any ESP."
+msgstr "未在任何 ESP 中发现已知引导器。"
+
+msgid "Create this UEFI boot entry from the scanned loader?"
+msgstr "将扫描到的引导器写为 UEFI 启动项？"

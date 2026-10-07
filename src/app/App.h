@@ -67,6 +67,10 @@ public:
 
     IPlatform* platform() const { return m_platform; }
     IDiskAccess* diskAccess() const { return m_diskAccess.get(); }
+    // Shared ownership for background workers (M11 loader scan) that may
+    // outlive the App when a stalled device keeps them running: the worker
+    // holds a copy, so the IDiskAccess outlives the UI safely.
+    std::shared_ptr<IDiskAccess> sharedDiskAccess() const { return m_diskAccess; }
 
     // Log severity tags in bootroll.log: [II] info / [WW] warning / [EE] error.
     enum class LogLevel { Info, Warn, Error };
