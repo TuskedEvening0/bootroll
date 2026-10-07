@@ -83,8 +83,14 @@ public:
     virtual std::vector<FontCandidate> candidateFonts() = 0;
 
     virtual bool isElevated() = 0;
-    // Restart this process elevated (UAC/pkexec). Returns false if declined.
+    // Restart this process elevated (UAC/pkexec). Returns false when declined
+    // or failed; lastElevateError() then carries a platform-specific reason.
     virtual bool restartElevated(const std::string& args) = 0;
+    // Diagnostic for the last failed restartElevated() call ("" when none, or
+    // not applicable - the Windows UAC path has no detail). Known categories
+    // are English msgids translatable via i18n; unknown ones are raw
+    // stderr/OS text. Shown in the UI next to the declined message.
+    virtual std::string lastElevateError() const { return {}; }
 
     // UI-facing elevation strings as i18n msgids. The wording is
     // platform-specific: Windows has "Administrator" (UAC), Linux has "root".

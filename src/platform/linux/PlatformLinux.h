@@ -26,6 +26,7 @@ public:
     std::vector<FontCandidate> candidateFonts() override;
     bool isElevated() override;
     bool restartElevated(const std::string& args) override;
+    std::string lastElevateError() const override { return m_lastElevateError; }
     const char* elevateActionMsgId() const override;
     const char* elevateDeclinedMsgId() const override;
     std::string iniPath() override;
@@ -35,6 +36,7 @@ private:
     std::string exeDir() const;
 
     UefiVarsLinux m_uefi;
+    std::string m_lastElevateError; // classified reason for the last failure
 };
 
 } // namespace bootroll

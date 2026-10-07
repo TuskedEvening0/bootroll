@@ -1045,3 +1045,15 @@ msgstr "未在任何 ESP 中发现已知引导器。"
 
 msgid "Create this UEFI boot entry from the scanned loader?"
 msgstr "将扫描到的引导器写为 UEFI 启动项？"
+
+msgid "pkexec refused the executable: it is not owned by root. Install bootroll system-wide (deb/rpm/arch), move it to a root-owned path, or start it manually with sudo."
+msgstr "pkexec 拒绝执行该程序：可执行文件不属于 root。请通过 deb/rpm/arch 包系统安装、放到 root 所有的路径，或直接用 sudo 启动。"
+
+msgid "No polkit authentication agent is running in this session; pkexec cannot ask for the password."
+msgstr "当前会话没有 polkit 认证代理，pkexec 无法询问密码。"
+
+msgid "pkexec is not installed (policykit-1 / polkit package)."
+msgstr "未安装 pkexec（policykit-1 / polkit 包）。"
+
+msgid "Cannot resolve the executable path (/proc/self/exe)."
+msgstr "无法解析可执行文件路径（/proc/self/exe）。"

@@ -58,7 +58,8 @@ public:
 | `systemBcdPath()` | 系统 BCD 路径，找不到返回 "" | 低优先级：扫 `/proc/mounts` 中 vfat 挂载点探测 `<mnt>/EFI/Microsoft/Boot/BCD`；实现不了先返回 ""（Linux 上以"打开文件"为主路径） |
 | `candidateFontPaths()` | CJK 字体路径，优先级降序 | Noto Sans CJK SC（`/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc`、`NotoSansCJKsc-Regular.otf`）、文泉驿微米黑、DroidSansFallbackFull；路径不存在会被 App 层自动跳过并回退内嵌字体 |
 | `isElevated()` | 是否已提权 | `geteuid() == 0` |
-| `restartElevated(args)` | 提权重启自身；用户拒绝返回 false | `pkexec /full/path/to/bootroll <args>`（若 exe 非 root 可执行需先确认可执行位）；成功后调用方会 `requestExit()` |
+| `restartElevated(args)` | 提权重启自身；用户拒绝返回 false | `pkexec env <显示环境> /full/path/to/bootroll <args>`（见下方 pkexec 要点）；成功后调用方会 `requestExit()` |
+| `lastElevateError()` | 上次 `restartElevated` 失败的原因（"" = 无/不适用；Windows 恒空） | 已知类别返回英文 msgid（po 可译），未知类别返回 pkexec 原始 stderr；UI 在拒绝提示旁展示并写日志 |
 | `iniPath()` | 每用户设置文件全路径 | 保持单文件便携原则：`/proc/self/exe` 所在目录 + `bootroll.ini`（Windows 版同款语义，勿用 XDG 改变行为） |
 | `logPath()` | 日志文件全路径 | 同上目录 + `bootroll.log` |
 
@@ -105,6 +106,13 @@ inline bool isUefiVarAbsent(uint32_t code); // 2 / 203 / 1168 视为不存在
 - **lastErrorCode → errno**：Linux 实现把 errno 原样返回。巧合且重要：`ENOENT == 2` 与 `ERROR_FILE_NOT_FOUND` 同值，**现有 `isUefiVarAbsent` 直接兼容**；`EACCES(13)/EPERM(1)/EIO(5)` 等会被 UI 识别为系统性错误并显示红字/提权按钮（App/UefiScreen 逻辑已就绪）。
 - **efivarfs 写坑**：内核不允许通过已打开 fd 变长改写已存在变量——正确顺序是先 `unlink()` 再 `create+write`（O_TRUNC 语义不可靠）。write() 内部必须按此实现，否则改 BootOrder 长度变化时失败。
 - 变量名映射：UI 传来的 name 是纯名（"Boot0001"/"BootOrder"），实现方负责拼 GUID 后缀。
+
+### pkexec 提权重启要点（1.1.0 修复，原为裸 false 无诊断）
+
+- **环境重置**：pkexec 把子进程环境裁到最小集（旧 polkit 尤甚）——提权实例会丢失 `DISPLAY`/`WAYLAND_DISPLAY`，GLFW 初始化即死，重启表现为"点了没反应"。必须 `pkexec env DISPLAY=… XAUTHORITY=… WAYLAND_DISPLAY=… XDG_RUNTIME_DIR=… DBUS_SESSION_BUS_ADDRESS=… /path/bootroll` 显式回传（存在哪个传哪个）。
+- **程序所有权**：polkit 0.105（Ubuntu 22.04 地板）的 pkexec 拒绝执行非 root 所有的程序（tar.gz 解压目录/AppDir 场景必中）；polkit 122+ 已无此检查。诊断文案需引导"系统包安装或 sudo"。
+- **无认证代理**：会话没有 polkit agent 时 pkexec 无法询问密码（内建 tty agent 对 GUI 进程不可用）。
+- **诊断通道**：fork 子进程 stderr 进管道（O_NONBLOCK，wait 轮询内排水防死锁），4 秒快速退出 → `classifyElevateFailure` 分类 → `lastElevateError()` 供 UI 展示 + `bootroll.log` 留证。超时视为已启动（返回 true）。
 
 ## 5. 平台工厂与 main.cpp
 

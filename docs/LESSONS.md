@@ -75,3 +75,10 @@
     - arch PKGBUILD `pkgver` 是静态值且 `cp` 进源码目录（与 M10_ACCEPTANCE "自动注入"的记录不符）→ 版本一变 smoke 的 `pacman -U dist/bootroll-${VER}-…` 就找不到文件。修复：`build-arch.sh` sed 注入（与 rpm 同规则）。
     - deb/rpm/arch 三处 smoke `grep "boot 0\."` 硬编码主版本 → bump 到 1.0.0 后日志横幅 `boot 1.0.0` 不再匹配。修复：改 `boot [0-9]+\.`。
     - 规矩：版本号单一来源（project VERSION）指**注入点**；grep/断言/文档示例里的具体版本串也要一并排查。
+
+## Linux 提权（1.1.0 后新增）
+
+24. **pkexec 失败必须留诊断，环境必须回传**（2026-10-07，用户报"以 root 身份重启总提示失败"）
+    - 原实现 `pkexec <exe>` 三处哑亏：pkexec 把子进程环境裁到最小集 → 提权实例丢 `DISPLAY`/`WAYLAND_DISPLAY`，GLFW 即死（重启像静默失败）；polkit 0.105（22.04 地板）拒绝非 root 所有的程序（便携版必中）；失败只有裸 `false`，"declined or failed" 无从排查，stderr 丢弃。
+    - 修复：`pkexec env` 显式回传显示/会话变量；stderr 进管道分类（root 所有权 / 无认证代理 / Not authorized / 原始 stderr）→ `lastElevateError()` 接缝 + UI 展示 + 日志留证。
+    - 规矩：**跨进程子命令的失败路径必须捕获 stderr + 退出码并给出可行动的提示**；提权/对话框类 zenity/pkexec 子进程同理（confirmDialog 的 fail-closed 已是先例）。

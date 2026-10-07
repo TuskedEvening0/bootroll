@@ -16,11 +16,17 @@ const ImVec4 kColError = ImVec4(1.0f, 0.45f, 0.45f, 1.0f);
 
 // Restart through the platform's privilege mechanism (pkexec / UAC). On
 // success the elevated replacement instance takes over and the UI shuts down.
+// On failure the platform-specific diagnostic (lastElevateError, empty on
+// Windows) is logged for forensics and shown next to the declined message.
 void attemptRestart(App& app, bool* declined)
 {
     if (app.platform()->restartElevated("")) {
         app.requestExit(); // elevated instance takes over
         return;
+    }
+    const std::string reason = app.platform()->lastElevateError();
+    if (!reason.empty()) {
+        app.log("elevate: restart failed: " + reason, App::LogLevel::Warn);
     }
     *declined = true;
 }
@@ -35,6 +41,13 @@ void drawAction(App& app, bool* declined)
         ImGui::SameLine();
         ImGui::TextColored(kColError, "%s",
                            T_(app.platform()->elevateDeclinedMsgId()));
+        // Known categories are msgids (translated when present); unknown ones
+        // are raw stderr text and pass through untranslated.
+        const std::string reason = app.platform()->lastElevateError();
+        if (!reason.empty()) {
+            const std::string shown = I18n::instance().translate(reason);
+            ImGui::TextWrapped("%s", shown.c_str());
+        }
     }
 }
 

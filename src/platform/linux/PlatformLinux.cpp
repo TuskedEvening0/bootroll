@@ -397,16 +397,98 @@ bool PlatformLinux::isElevated()
     return geteuid() == 0;
 }
 
-bool PlatformLinux::restartElevated(const std::string& args)
+namespace {
+
+// True when `name` resolves to an executable file on PATH.
+bool executableInPath(const char* name)
 {
-    // pkexec /full/path/to/bootroll <args...>. pkexec stays alive for the
-    // lifetime of the elevated child, so "declined" is detected via a short
-    // exit (exit 126/127); a still-running pkexec counts as launched.
-    const std::string exe = exePath();
-    if (exe.empty()) {
+    const char* path = std::getenv("PATH");
+    if (path == nullptr) {
         return false;
     }
-    std::vector<std::string> argvStrings = {"pkexec", exe};
+    const std::string p = path;
+    size_t start = 0;
+    while (start <= p.size()) {
+        const size_t colon = p.find(':', start);
+        const std::string dir =
+            p.substr(start, colon == std::string::npos ? std::string::npos
+                                                       : colon - start);
+        const std::string candidate = dir + "/" + name;
+        struct stat st = {};
+        if (stat(candidate.c_str(), &st) == 0 && S_ISREG(st.st_mode) &&
+            access(candidate.c_str(), X_OK) == 0) {
+            return true;
+        }
+        if (colon == std::string::npos) {
+            break;
+        }
+        start = colon + 1;
+    }
+    return false;
+}
+
+// Classify a fast pkexec exit for the UI. Known categories are English msgids
+// (translatable via i18n passthrough when absent from the catalog); unknown
+// ones surface the raw stderr. The "not owned by root" category is the
+// portable-build case on older polkit (Ubuntu 22.04 floor ships 0.105): its
+// pkexec refuses any program that is not root-owned, which a tar.gz extract
+// or an AppImage-style user path always is.
+std::string classifyElevateFailure(int code, std::string stderrText)
+{
+    while (!stderrText.empty() &&
+           (stderrText.back() == '\n' || stderrText.back() == '\r')) {
+        stderrText.pop_back();
+    }
+    if (stderrText.find("not owned by root") != std::string::npos) {
+        return "pkexec refused the executable: it is not owned by root. Install bootroll system-wide (deb/rpm/arch), move it to a root-owned path, or start it manually with sudo.";
+    }
+    if (stderrText.find("authentication agent") != std::string::npos) {
+        return "No polkit authentication agent is running in this session; pkexec cannot ask for the password.";
+    }
+    if (stderrText.find("Not authorized") != std::string::npos) {
+        return stderrText; // dismissed / wrong password: declined semantics
+    }
+    if (!stderrText.empty()) {
+        return stderrText;
+    }
+    return "pkexec exited with status " + std::to_string(code) + ".";
+}
+
+} // namespace
+
+bool PlatformLinux::restartElevated(const std::string& args)
+{
+    m_lastElevateError.clear();
+
+    // pkexec [env VARS...] /full/path/to/bootroll <args...>. pkexec stays
+    // alive for the lifetime of the elevated child, so "declined" is detected
+    // via a short exit; a still-running pkexec counts as launched.
+    const std::string exe = exePath();
+    if (exe.empty()) {
+        m_lastElevateError =
+            "Cannot resolve the executable path (/proc/self/exe).";
+        return false;
+    }
+    if (!executableInPath("pkexec")) {
+        m_lastElevateError = "pkexec is not installed (policykit-1 / polkit package).";
+        return false;
+    }
+
+    // pkexec resets the child environment to a minimal set (old polkit on the
+    // 22.04 floor in particular): without DISPLAY / WAYLAND_DISPLAY the
+    // elevated instance dies before opening a window and the restart looks
+    // like a silent no-op. Re-export the display/session variables via
+    // `pkexec env`; only the ones actually present in this process are sent.
+    std::vector<std::string> argvStrings = {"pkexec", "env"};
+    for (const char* name : {"DISPLAY", "XAUTHORITY", "WAYLAND_DISPLAY",
+                             "XDG_RUNTIME_DIR", "DBUS_SESSION_BUS_ADDRESS",
+                             "XDG_SESSION_TYPE"}) {
+        const char* v = std::getenv(name);
+        if (v != nullptr && *v != '\0') {
+            argvStrings.push_back(std::string(name) + "=" + v);
+        }
+    }
+    argvStrings.push_back(exe);
     {
         std::istringstream in(args);
         std::string token;
@@ -415,11 +497,25 @@ bool PlatformLinux::restartElevated(const std::string& args)
         }
     }
 
+    // Child stderr is captured for failure diagnostics (previously it went to
+    // the app's stderr and was lost for GUI runs). O_NONBLOCK + drain inside
+    // the wait loop keeps the child from blocking on a full pipe.
+    int errPipe[2] = {};
+    if (pipe(errPipe) != 0) {
+        m_lastElevateError = "pipe() failed.";
+        return false;
+    }
     const pid_t pid = fork();
     if (pid < 0) {
+        close(errPipe[0]);
+        close(errPipe[1]);
+        m_lastElevateError = "fork() failed.";
         return false;
     }
     if (pid == 0) {
+        close(errPipe[0]);
+        dup2(errPipe[1], STDERR_FILENO);
+        close(errPipe[1]);
         std::vector<char*> argv;
         argv.reserve(argvStrings.size() + 1);
         for (const std::string& a : argvStrings) {
@@ -427,26 +523,51 @@ bool PlatformLinux::restartElevated(const std::string& args)
         }
         argv.push_back(nullptr);
         execvp(argv[0], argv.data());
-        _exit(127);
+        _exit(127); // exec failed (pkexec missing is pre-checked; belt+braces)
     }
+    close(errPipe[1]);
+    fcntl(errPipe[0], F_SETFL, fcntl(errPipe[0], F_GETFL) | O_NONBLOCK);
 
+    std::string childErr;
     const auto deadline = std::chrono::steady_clock::now() +
                           std::chrono::seconds(4);
+    bool launched = false;
+    int exitCode = -1;
     for (;;) {
+        char buf[512];
+        for (;;) {
+            const ssize_t n = read(errPipe[0], buf, sizeof(buf));
+            if (n > 0) {
+                childErr.append(buf, size_t(n));
+            } else {
+                break; // EAGAIN / EOF
+            }
+        }
         int status = 0;
         const pid_t r = waitpid(pid, &status, WNOHANG);
         if (r == pid) {
-            const int code = WIFEXITED(status) ? WEXITSTATUS(status) : 1;
-            return code == 0; // 126/127: dismissed or not authorized
+            exitCode = WIFEXITED(status) ? WEXITSTATUS(status) : -1;
+            break;
         }
         if (r < 0) {
-            return false;
+            break;
         }
         if (std::chrono::steady_clock::now() > deadline) {
-            return true; // authenticated and running (or a slow password)
+            launched = true; // authenticated and running (or a slow password)
+            break;
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
+    close(errPipe[0]);
+
+    if (launched) {
+        return true;
+    }
+    if (exitCode == 0) {
+        return true; // pkexec reports success
+    }
+    m_lastElevateError = classifyElevateFailure(exitCode, childErr);
+    return false;
 }
 
 const char* PlatformLinux::elevateActionMsgId() const
