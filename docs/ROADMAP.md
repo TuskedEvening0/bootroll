@@ -2,7 +2,7 @@
 
 > 写于 2026-10-06，M8 收官后规划。受众：下一任 Agent / 开发者。
 > 阅读顺序：本文 → [M9_PLAN.md](M9_PLAN.md)（M9 细化执行计划）→ [M8_PLAN.md](M8_PLAN.md) / [M8_ACCEPTANCE.md](M8_ACCEPTANCE.md)（上一里程碑样板）。
-> **状态：1.0.0 已发布**（2026-10-07，tag `v1.0.0` + GitHub Release 全套产物；M9：矩阵 8 格全绿 + 字体/fail-closed 探针，[M9_ACCEPTANCE.md](M9_ACCEPTANCE.md)；M10：五类 Linux 产物 + 安装冒烟全绿，[M10_ACCEPTANCE.md](M10_ACCEPTANCE.md)；Windows 侧见 [HANDOFF_WIN.md](HANDOFF_WIN.md)）。下一步：**M11 引导器快捷添加**。
+> **状态：M9/M10/M11 完成，1.0.0 已发布**（2026-10-07，tag `v1.0.0` + GitHub Release 全套产物；M9：矩阵 8 格全绿 + 字体/fail-closed 探针，[M9_ACCEPTANCE.md](M9_ACCEPTANCE.md)；M10：五类 Linux 产物 + 安装冒烟全绿，[M10_ACCEPTANCE.md](M10_ACCEPTANCE.md)；M11：引导器快捷添加，[M11_ACCEPTANCE.md](M11_ACCEPTANCE.md)；Windows 侧见 [HANDOFF_WIN.md](HANDOFF_WIN.md)）。版本线推进至 **1.1.0**（bump 完成，tag/发布待用户确认）。后续：真机 UEFI 验证（M11_ACCEPTANCE §4）+ M11 后特性规划。
 
 ## 0. 已定决策（与用户确认，勿翻案）
 
@@ -55,7 +55,7 @@
 
 **里程碑定义草案**（CMakeLists 尾注，开工时追加）：`M10 : packaging — container-native deb/rpm/arch + AppImage/tar.gz + 1.0.0 release`
 
-## 3. M11 —（1.0 后）引导器快捷添加（规划）
+## 3. M11 — 引导器快捷添加（✅ 已完成，验收见 M11_ACCEPTANCE.md）
 
 本质：**扫 ESP 找已知加载器 EFI → 预填 + 一键建 Boot#### 条目**。
 

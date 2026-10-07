@@ -22,7 +22,7 @@ bootroll 是 BOOTICEx64 的净室重写：引导扇区/BCD/UEFI 启动项管理�
 | **M8** | **Linux 后端（platform/linux + 渲染后端替换）** | **✅ 完成（7/7 全过并留证，含病盘停滞告警实测收尾，见 M8_ACCEPTANCE.md）** |
 | M9 | 发行版适配（gcc 11 下限 + 容器构建矩阵 + 运行时差异） | ✅ 完成（矩阵 8 格全绿 + 探针留证，见 M9_ACCEPTANCE.md / DISTRO_NOTES.md；版本 0.2.0） |
 | M10 | 打包与发布（容器原生 deb/rpm/arch + AppImage/tar.gz → 1.0.0） | ✅ 完成并已发布：**v1.0.0**（2026-10-07，GitHub Release 五类产物 + SHA256SUMS；见 M10_ACCEPTANCE.md） |
-| M11 | 引导器快捷添加（systemd-boot / Limine ESP 扫描 + Boot 条目预设） | 📋 已规划（ROADMAP.md §3，1.0 后） |
+| M11 | 引导器快捷添加（systemd-boot / Limine ESP 扫描 + Boot 条目预设） | ✅ 完成（core/uefi/LoaderPresets 纯逻辑 + UefiScreen 快捷添加区，工作线程扫描；75 用例/593 断言 + 矩阵全绿，见 M11_ACCEPTANCE.md；版本 1.1.0） |
 
 后续规划（M9–M11）的决策记录与风险登记：见 [ROADMAP.md](ROADMAP.md)。
 
