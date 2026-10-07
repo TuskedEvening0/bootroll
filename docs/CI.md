@@ -38,6 +38,8 @@ git commit -am "release: 1.0.0" && git tag v1.0.0 && git push origin main --tags
 # 3) package.yml 自动出全套产物并挂到 GitHub Release
 ```
 
+tag 重打（Release 尚未挂出前无副作用）：`git push origin :refs/tags/vX.Y.Z` 删远端 → 本地重 tag → 再推。已失败但不产生 Release 的 tag 可安全删除重打（2026-10-07 v1.0/v1.0.0 首跑即此情形：先版本守卫失败，后执行位 126，均无 Release 残留）。
+
 ## 已知限制
 
 - Windows job 未经验证（HANDOFF_WIN.md），首跑可能红——属预期，由 Windows Agent 认领修复后摘掉 continue-on-error。

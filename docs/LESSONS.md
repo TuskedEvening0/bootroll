@@ -64,3 +64,14 @@
     - **也不是连接能力位**：3.18 头文件已无 `FUSE_CAP_DIRECT_IO`（fuse2→3 迁移文档提过它，别照抄）。
     - **正解：`init(conn, cfg)` 回调里 `cfg->direct_io = 1`**（`struct fuse_config` 字段；init 签名在 3.x 各版本间还有 `void*` 返回值差异，以本机头文件为准）。
     - 附：`fuse_opt_insert_arg` 作用在 `FUSE_ARGS_INIT` 的**借用 argv** 上会触发 assert（`args->allocated==0`）；要改 argv 就自己 strdup 整份（`fuse_opt_free_args` 会逐项 free，借用项会 double-free）。
+
+## CI / 发布（M10→1.0.0 新增）
+
+22. **git 索引执行位可与本地文件系统脱钩**（2026-10-07，v1.0.0 首跑 `Permission denied` exit 126）
+    - `scripts/*.sh` 本地都是 755（本地跑管线一直正常），但 git 索引里全是 100644 → CI 上 `./scripts/package.sh` 直接 126。
+    - 规矩：可执行脚本入库后用 `git ls-files -s scripts/` 对账模式位（`100755`）；修复用 `git update-index --chmod=+x`，`chmod +x` 在 core.filemode=false 的环境里不进索引。
+
+23. **版本 bump 前对账所有硬编码版本位**（同日，两处会让 1.0.0 出包失败的潜伏问题，0.2.0 期未暴露）
+    - arch PKGBUILD `pkgver` 是静态值且 `cp` 进源码目录（与 M10_ACCEPTANCE "自动注入"的记录不符）→ 版本一变 smoke 的 `pacman -U dist/bootroll-${VER}-…` 就找不到文件。修复：`build-arch.sh` sed 注入（与 rpm 同规则）。
+    - deb/rpm/arch 三处 smoke `grep "boot 0\."` 硬编码主版本 → bump 到 1.0.0 后日志横幅 `boot 1.0.0` 不再匹配。修复：改 `boot [0-9]+\.`。
+    - 规矩：版本号单一来源（project VERSION）指**注入点**；grep/断言/文档示例里的具体版本串也要一并排查。
