@@ -16,8 +16,6 @@ namespace bootroll {
 
 namespace {
 
-constexpr const char* kEspTypeGuid = "c12a7328-f81f-11d2-ba4b-00a0c93ec93b";
-
 std::string lowerCopy(std::string s)
 {
     for (char& c : s) {
@@ -30,7 +28,7 @@ std::string lowerCopy(std::string s)
 // (letter-less on Windows), a mounted FAT volume, or an unmountable volume.
 bool mayBeFat(const PartitionInfo& p)
 {
-    if (lowerCopy(p.gptTypeGuid) == kEspTypeGuid) {
+    if (isEspTypeGuid(p.gptTypeGuid)) {
         return true;
     }
     const std::string fs = lowerCopy(p.fsName);
@@ -88,7 +86,7 @@ bool EspFileDialog::ensureChoices(App& app)
             c.partIdx = int(pi);
             c.label = diskShortName(d) + " / " + T_("Partition") + " " +
                       std::to_string(p.number);
-            if (lowerCopy(p.gptTypeGuid) == kEspTypeGuid) {
+            if (isEspTypeGuid(p.gptTypeGuid)) {
                 c.label += " (ESP)";
             }
             if (!p.fsName.empty()) {

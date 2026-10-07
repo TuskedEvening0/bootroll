@@ -206,6 +206,7 @@ add_executable(bootroll ${BOOTROLL_EXECUTABLE_WIN32}
     src/core/util/HexText.h    src/core/util/HexText.cpp
     src/core/hexedit/HexEdit.h src/core/hexedit/HexEdit.cpp
     src/core/uefi/UefiVars.h   src/core/uefi/UefiVars.cpp
+    src/core/uefi/LoaderPresets.h src/core/uefi/LoaderPresets.cpp
     src/core/fat/FatVolume.h   src/core/fat/FatVolume.cpp
     src/platform/IPlatform.h
     src/platform/IUefiVars.h
@@ -280,4 +281,5 @@ set_target_properties(bootroll PROPERTIES
 #   M7 : UEFI boot entry management (done)
 #   M8 : platform/linux backend + linux-gcc preset activation
 #   M9 : distro adaptation - gcc11 floor, build matrix, runtime font/dialog chains
+#   M11: loader quick-add - systemd-boot / Limine (+rEFInd) ESP scan + Boot entry presets
 # ---------------------------------------------------------------------------

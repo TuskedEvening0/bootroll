@@ -51,4 +51,9 @@ std::string formatSize(uint64_t bytes);
 // "Disk 0" style short name without model.
 std::string diskShortName(const DiskInfo& d);
 
+// True when the partition's GPT type GUID is the EFI System Partition
+// (case-insensitive). Single source for the ESP check (UefiScreen,
+// EspFileDialog and the M11 loader scan share it).
+bool isEspTypeGuid(const std::string& gptTypeGuid);
+
 } // namespace bootroll

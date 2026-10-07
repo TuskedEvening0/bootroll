@@ -6,6 +6,7 @@ add_executable(bootroll_tests
     test_bootcode.cpp
     test_hexedit.cpp
     test_uefi_vars.cpp
+    test_loader_presets.cpp
     test_fat.cpp
     ${CMAKE_SOURCE_DIR}/src/core/bcd/Hive.cpp
     ${CMAKE_SOURCE_DIR}/src/core/bcd/Utf16.cpp
@@ -14,6 +15,7 @@ add_executable(bootroll_tests
     ${CMAKE_SOURCE_DIR}/src/core/util/HexText.cpp
     ${CMAKE_SOURCE_DIR}/src/core/hexedit/HexEdit.cpp
     ${CMAKE_SOURCE_DIR}/src/core/uefi/UefiVars.cpp
+    ${CMAKE_SOURCE_DIR}/src/core/uefi/LoaderPresets.cpp
     ${CMAKE_SOURCE_DIR}/src/core/fat/FatVolume.cpp
     ${CMAKE_SOURCE_DIR}/src/core/disk/PartitionTable.cpp
     ${CMAKE_SOURCE_DIR}/src/core/bootcode/BootCode.cpp

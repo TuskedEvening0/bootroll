@@ -1,4 +1,5 @@
 #include "core/disk/DiskInfo.h"
+#include <cctype>
 #include <cstdio>
 
 namespace bootroll {
@@ -22,6 +23,18 @@ std::string formatSize(uint64_t bytes)
     else
         std::snprintf(buf, sizeof(buf), "%.2f %s", v, units[u]);
     return buf;
+}
+
+// GPT type GUID of an EFI System Partition (lowercase canonical form).
+constexpr const char* kEspTypeGuid = "c12a7328-f81f-11d2-ba4b-00a0c93ec93b";
+
+bool isEspTypeGuid(const std::string& gptTypeGuid)
+{
+    std::string g = gptTypeGuid;
+    for (char& c : g) {
+        c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    }
+    return g == kEspTypeGuid;
 }
 
 std::string diskShortName(const DiskInfo& d)
