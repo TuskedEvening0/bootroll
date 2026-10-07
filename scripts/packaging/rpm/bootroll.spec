@@ -3,7 +3,7 @@
 # are declared manually. Package names for weak deps are NOT yet verified on
 # all targets (M9 left-over) - unknown names only produce warnings.
 Name:           bootroll
-Version:        0.2.0
+Version:        1.0.0
 Release:        1%{?dist}
 Summary:        Boot manager utility (BOOTICEx64 clean-room rewrite)
 License:        GPL-2.0 AND MIT AND GPL-3.0-or-later

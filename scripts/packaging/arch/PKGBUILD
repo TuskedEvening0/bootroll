@@ -1,6 +1,6 @@
 # Maintainer: bootroll-dev <bootroll-dev@localhost>
 pkgname=bootroll
-pkgver=0.2.0
+pkgver=1.0.0
 pkgrel=1
 pkgdesc="Boot manager utility (BOOTICEx64 clean-room rewrite)"
 arch=('x86_64')
