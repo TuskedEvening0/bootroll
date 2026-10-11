@@ -196,6 +196,7 @@ add_executable(bootroll ${BOOTROLL_EXECUTABLE_WIN32}
     src/app/Settings.h         src/app/Settings.cpp
     src/core/disk/DiskInfo.h   src/core/disk/DiskInfo.cpp
     src/core/disk/IDiskAccess.h
+    src/core/disk/FileSystemProbe.h src/core/disk/FileSystemProbe.cpp
     src/core/disk/PartitionTable.h src/core/disk/PartitionTable.cpp
     src/core/bcd/Hive.h        src/core/bcd/Hive.cpp
     src/core/bcd/Utf16.h       src/core/bcd/Utf16.cpp

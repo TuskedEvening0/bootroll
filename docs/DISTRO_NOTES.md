@@ -57,7 +57,7 @@
 打包产物证据（dist/，SHA256SUMS）：`bootroll_0.2.0_amd64.deb`、`bootroll-0.2.0-1.fc44.x86_64.rpm`、`bootroll-0.2.0-1.x86_64.rpm`(tumbleweed)、`bootroll-0.2.0-1-x86_64.pkg.tar.zst`、`Bootroll-0.2.0-x86_64.AppImage`、`bootroll-0.2.0-linux-x86_64.tar.gz`。
 lintian/rpmlint 残留（记录不门禁）：deb 缺 changelog/man page；rpm spelling-error（专有名词）+ LEGAL.md 无 shebang（%license 文件）。
 
-AppImage：linuxdeploy（continuous，x86_64）sha256 `8aea8da0f7f7039d2a2cecb14657d752a222a5e1d3825caeef186c82f751cdd1`——脚本每次构建打印，正式发布前把 URL 换成固定 release tag 并以此 hash 校验。AppImage 内 squashfs 只读 → 便携日志/ini 写入静默失败（预期，进程存活冒烟替代日志断言）。
+AppImage：linuxdeploy（continuous，x86_64）sha256 `8aea8da0f7f7039d2a2cecb14657d752a222a5e1d3825caeef186c82f751cdd1`——脚本每次构建打印，正式发布前把 URL 换成固定 release tag 并以此 hash 校验。AppImage 内 squashfs 只读：ini/log/备份现已回退 XDG（`~/.config`、`~/.local/state` 下的 `bootroll/`，见 PLATFORM_SEAMS §2 iniPath/logPath），提权走 `pkexec /bin/sh -c 'exec "$0" --appimage-extract-and-run'` 绕过 FUSE 对 root 的访问拒绝（详见 PLATFORM_SEAMS §pkexec 要点）。
 
 ## 3. 下限审计修复（矩阵首轮发现，均已入库）
 

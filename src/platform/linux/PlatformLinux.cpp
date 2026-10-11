@@ -8,6 +8,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <filesystem>
 #include <map>
 #include <set>
 #include <sstream>
@@ -37,6 +38,69 @@ std::string dirOf(const std::string& path)
 {
     const size_t p = path.find_last_of('/');
     return p == std::string::npos ? std::string() : path.substr(0, p);
+}
+
+// True when running from an AppImage runtime. The runtime exports $APPDIR for
+// both launch modes (FUSE-mounted squashfs and --appimage-extract-and-run);
+// /proc/self/exe then lives in a temporary location that must never hold
+// settings, logs or backups: the mount is read-only, and the extracted
+// directory is wiped with the elevated instance. The /.mount_ check catches
+// runs that bypass the runtime's own env (extracted mounts mounted by hand).
+bool inAppImageRuntime()
+{
+    const char* appdir = std::getenv("APPDIR");
+    if (appdir != nullptr && *appdir != '\0') {
+        return true;
+    }
+    return exePath().find("/.mount_") != std::string::npos;
+}
+
+// $XDG_*_HOME when set (absolute), else the spec default under $HOME.
+std::string xdgUserDir(const char* envVar, const char* homeRelative)
+{
+    const char* v = std::getenv(envVar);
+    if (v != nullptr && *v == '/') {
+        return v;
+    }
+    const char* home = std::getenv("HOME");
+    if (home == nullptr || *home != '/') {
+        return {};
+    }
+    return std::string(home) + homeRelative;
+}
+
+bool dirWritable(const std::string& dir)
+{
+    return ::access(dir.c_str(), W_OK) == 0;
+}
+
+// Resolve a writable per-user file path (settings / log; backups live in the
+// log's directory). Preference order:
+//   1. exe dir  - single-file portability, same semantics as the Windows
+//                 build (kept whenever the directory is actually writable);
+//   2. XDG config/state dirs - inside an AppImage the exe lives on a
+//                 read-only squashfs mount, and system installs (deb/rpm/arch
+//                 to /usr/bin) are not writable by normal users either.
+// The chosen XDG app directory is created (best effort) so the first log
+// line and the first auto-backup do not silently vanish.
+std::string resolveUserDataPath(const char* fileName, bool stateDir)
+{
+    const std::string exeDir = dirOf(exePath());
+    if (!inAppImageRuntime() && !exeDir.empty() && dirWritable(exeDir)) {
+        return exeDir + "/" + fileName;
+    }
+
+    const std::string base = xdgUserDir(stateDir ? "XDG_STATE_HOME" : "XDG_CONFIG_HOME",
+                                        stateDir ? "/.local/state" : "/.config");
+    if (base.empty()) {
+        // No usable HOME either: keep the historical exe-dir path and let the
+        // caller's file open fail the way it always did.
+        return exeDir + "/" + fileName;
+    }
+    const std::string dir = base + "/bootroll";
+    std::error_code ec;
+    std::filesystem::create_directories(dir, ec); // exists-ok, best effort
+    return dir + "/" + fileName;
 }
 
 bool fileExists(const std::string& path)
@@ -442,6 +506,16 @@ std::string classifyElevateFailure(int code, std::string stderrText)
     if (stderrText.find("not owned by root") != std::string::npos) {
         return "pkexec refused the executable: it is not owned by root. Install bootroll system-wide (deb/rpm/arch), move it to a root-owned path, or start it manually with sudo.";
     }
+    // pkexec authenticated but execv() failed at the last step ("Error
+    // executing <path>: Permission denied"). The classic case is a binary on
+    // a FUSE mount (an AppImage's squashfs only lets the mounting user in -
+    // root included) or another location root cannot exec. AppImages relaunch
+    // through --appimage-extract-and-run (see restartElevated), so this now
+    // only surfaces for exotic portable locations.
+    if (stderrText.find("Error executing") != std::string::npos &&
+        stderrText.find("Permission denied") != std::string::npos) {
+        return "pkexec authenticated but could not execute the program (Permission denied). The binary probably lives on a FUSE or read-only mount; start it manually with sudo instead.";
+    }
     if (stderrText.find("authentication agent") != std::string::npos) {
         return "No polkit authentication agent is running in this session; pkexec cannot ask for the password.";
     }
@@ -454,21 +528,48 @@ std::string classifyElevateFailure(int code, std::string stderrText)
     return "pkexec exited with status " + std::to_string(code) + ".";
 }
 
+// Absolute, verified path of the running AppImage file. The AppImage runtime
+// exports $ARGV0 (the AppImage path as invoked, possibly relative); resolving
+// it here - before pkexec - matters because pkexec chdirs the child to root's
+// home. "" (with *error set) when the file cannot be located.
+std::string appImagePath(std::string* error)
+{
+    const char* raw = std::getenv("ARGV0");
+    if (raw == nullptr || *raw == '\0') {
+        *error = "Cannot locate the AppImage file ($ARGV0 is not set).";
+        return {};
+    }
+    std::string path = raw;
+    if (path.front() != '/') {
+        char cwd[4096] = {};
+        if (getcwd(cwd, sizeof cwd) == nullptr) {
+            *error = "Cannot resolve the AppImage path (getcwd failed).";
+            return {};
+        }
+        path = std::string(cwd) + "/" + path;
+    }
+    char resolved[4096] = {};
+    if (realpath(path.c_str(), resolved) == nullptr) {
+        *error = "Cannot resolve the AppImage file: " + path;
+        return {};
+    }
+    struct stat st = {};
+    if (stat(resolved, &st) != 0 || !S_ISREG(st.st_mode)) {
+        *error = "Cannot find the AppImage file: " + path;
+        return {};
+    }
+    return resolved;
+}
+
 } // namespace
 
 bool PlatformLinux::restartElevated(const std::string& args)
 {
     m_lastElevateError.clear();
 
-    // pkexec [env VARS...] /full/path/to/bootroll <args...>. pkexec stays
-    // alive for the lifetime of the elevated child, so "declined" is detected
-    // via a short exit; a still-running pkexec counts as launched.
-    const std::string exe = exePath();
-    if (exe.empty()) {
-        m_lastElevateError =
-            "Cannot resolve the executable path (/proc/self/exe).";
-        return false;
-    }
+    // pkexec [env VARS...] <program...>. pkexec stays alive for the lifetime
+    // of the elevated child, so "declined" is detected via a short exit; a
+    // still-running pkexec counts as launched.
     if (!executableInPath("pkexec")) {
         m_lastElevateError = "pkexec is not installed (policykit-1 / polkit package).";
         return false;
@@ -488,12 +589,44 @@ bool PlatformLinux::restartElevated(const std::string& args)
             argvStrings.push_back(std::string(name) + "=" + v);
         }
     }
-    argvStrings.push_back(exe);
+
+    if (inAppImageRuntime()) {
+        // /proc/self/exe lives on the runtime's FUSE-mounted squashfs, and a
+        // user-mounted FUSE filesystem denies every other uid - root included.
+        // pkexec authenticates fine, becomes root, and then execv() on the
+        // mounted binary fails with EACCES ("Error executing
+        // /tmp/.mount_*/usr/bin/bootroll: Permission denied"). So never hand
+        // pkexec the mounted binary: re-launch the outer AppImage file (plain
+        // filesystem, readable by root) through root-owned /bin/sh - pkexec
+        // only vets that program - and let the runtime's
+        // --appimage-extract-and-run mode exec a root-owned copy straight off
+        // a temp dir, with no FUSE involved. (The extracted copy leaves a
+        // root-owned temp dir behind; the runtime cleans up nothing, /tmp
+        // empties on reboot.)
+        std::string appImageError;
+        const std::string appImage = appImagePath(&appImageError);
+        if (appImage.empty()) {
+            m_lastElevateError = appImageError;
+            return false;
+        }
+        argvStrings.push_back("/bin/sh");
+        argvStrings.push_back("-c");
+        argvStrings.push_back("exec \"$0\" --appimage-extract-and-run \"$@\"");
+        argvStrings.push_back(appImage); // sh -c: $0; "$@" stays empty (no args)
+    } else {
+        const std::string exe = exePath();
+        if (exe.empty()) {
+            m_lastElevateError =
+                "Cannot resolve the executable path (/proc/self/exe).";
+            return false;
+        }
+        argvStrings.push_back(exe);
+    }
     {
         std::istringstream in(args);
         std::string token;
         while (in >> token) {
-            argvStrings.push_back(token);
+            argvStrings.push_back(token); // sh -c: becomes "$@" after $0
         }
     }
 
@@ -580,21 +713,21 @@ const char* PlatformLinux::elevateDeclinedMsgId() const
     return "Restart as root was declined or failed.";
 }
 
-std::string PlatformLinux::exeDir() const
-{
-    return dirOf(exePath());
-}
-
 std::string PlatformLinux::iniPath()
 {
-    // Single-file portability: settings/log live next to the executable
-    // (same semantics as the Windows build; no XDG).
-    return exeDir() + "/" + kAppIniName;
+    // Single-file portability when possible; XDG config fallback when the exe
+    // directory is not writable (AppImage mount, system installs).
+    static const std::string path = resolveUserDataPath(kAppIniName, false);
+    return path;
 }
 
 std::string PlatformLinux::logPath()
 {
-    return exeDir() + "/" + kAppLogName;
+    // XDG state fallback (same rules as iniPath). The auto-backup directories
+    // of every screen derive from this file's directory (<dir>/backup), so
+    // this one choice fixes settings, logs and backups together.
+    static const std::string path = resolveUserDataPath(kAppLogName, true);
+    return path;
 }
 
 std::unique_ptr<IPlatform> createPlatform()

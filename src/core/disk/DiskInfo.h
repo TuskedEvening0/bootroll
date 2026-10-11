@@ -31,7 +31,8 @@ struct PartitionInfo {
     // Mounted volume info (optional; empty when not mounted)
     std::string driveLetter;    // "C:" or ""
     std::string label;
-    std::string fsName;         // "NTFS", "FAT32", ... ("" when unmountable, e.g. ESP)
+    std::string fsName;         // "NTFS", "FAT32", ... ("" when unknown; Linux
+                                // probes unmounted partitions' boot sectors)
 };
 
 struct DiskInfo {

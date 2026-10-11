@@ -294,11 +294,12 @@ void DiskAccessLinux::fillDiskDetails(DiskInfo& disk)
         close(fd);
         throw;
     }
-    close(fd);
 
-    // Mounted-volume attachment: pure file reads (mountinfo/sysfs), safe on
-    // this worker thread (mirrors DiskWin::attachVolumeData).
-    attachVolumeDataLinux(disk);
+    // Mounted-volume attachment + unmounted-filesystem probe: mountinfo/sysfs
+    // are pure file reads; the probe preads the already-open fd (mirrors
+    // DiskWin::attachVolumeData doing GetVolumeInformationW I/O).
+    attachVolumeDataLinux(fd, devNode, disk);
+    close(fd);
 }
 
 std::string DiskAccessLinux::devNodeForNumber(uint32_t diskNumber)

@@ -82,3 +82,14 @@
     - 原实现 `pkexec <exe>` 三处哑亏：pkexec 把子进程环境裁到最小集 → 提权实例丢 `DISPLAY`/`WAYLAND_DISPLAY`，GLFW 即死（重启像静默失败）；polkit 0.105（22.04 地板）拒绝非 root 所有的程序（便携版必中）；失败只有裸 `false`，"declined or failed" 无从排查，stderr 丢弃。
     - 修复：`pkexec env` 显式回传显示/会话变量；stderr 进管道分类（root 所有权 / 无认证代理 / Not authorized / 原始 stderr）→ `lastElevateError()` 接缝 + UI 展示 + 日志留证。
     - 规矩：**跨进程子命令的失败路径必须捕获 stderr + 退出码并给出可行动的提示**；提权/对话框类 zenity/pkexec 子进程同理（confirmDialog 的 fail-closed 已是先例）。
+
+25. **AppImage 提权：FUSE 挂载拒绝 root，永远别把挂载内二进制交给 pkexec**（2026-10-11，用户报 Xfce 下输完密码仍提示 `/tmp/.mount_*/usr/bin/bootroll:权限不够`）
+    - 病史：AppImage 的 squashfs 是普通用户 FUSE 挂载的，而 FUSE 挂载默认只放行挂载者本人——**root 也在拒绝之列**。pkexec 验密成功、setreuid 成 root 后 `execv` 挂载内二进制得 EACCES（pkexec 源码：认证先于 exec，失败打印 `Error executing <path>: <errno 文本>`）。#24 的 env 回传全做对了也救不了这一步。
+    - 修复：AppImage 模式（`$APPDIR` / 路径含 `/.mount_`）改为 `pkexec env … /bin/sh -c 'exec "$0" --appimage-extract-and-run "$@"' <外层 AppImage>`——/bin/sh root 所有可过 pkexec 校验，外层文件在普通文件系统上 root 可读，extract-and-run 全程不碰 FUSE。`$ARGV0` 必须在本进程内先转绝对路径：pkexec 会把子进程 cwd 切到 /root。
+    - 规矩：**setuid/提权链路里凡涉及用户态挂载（FUSE/sshfs/nfs），切 uid 前先想一遍"切过去还读得到吗"**；读不到就换"root 可信入口 + 外层重新拉起"，别硬穿。
+
+26. **魔数偏移是"从分区起算"还是"从结构起算"，探测函数必须带长度守卫**（同日，ext 探测首版测试全跑必炸）
+    - 病史：ext 系魔数 0xEF53 在超级块偏移 56（= 分区 0x438），但超级块本体在分区 1024B 处——**单 512B 扇区根本够不到**。照 512B 建的测试夹具按 0x438 写入 = 越界写堆，`probeFilesystemName` 照读 = 越界读。
+    - 指纹：单测**单跑全过、合跑段错误/中止、且崩点在完全无关的用例上**（堆布局依赖），gdb 单跑又复现不了——先怀疑夹具/被测函数越界，别信"偶发"。
+    - 修复：探测入口统一收 `size` 并对每个魔数做 `size >= 最靠后字段` 守卫（ext 需 0x44C）；Linux 平台层探测一律读 4KB 而非单扇区。
+    - 规矩：**新魔数进来先写清楚"偏移的基准点"，夹具缓冲区按最靠后字段定大小**；探测类纯函数一律 `size` 入参 + 守卫出参，禁止隐式假设 512。

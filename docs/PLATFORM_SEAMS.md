@@ -58,10 +58,10 @@ public:
 | `systemBcdPath()` | 系统 BCD 路径，找不到返回 "" | 低优先级：扫 `/proc/mounts` 中 vfat 挂载点探测 `<mnt>/EFI/Microsoft/Boot/BCD`；实现不了先返回 ""（Linux 上以"打开文件"为主路径） |
 | `candidateFontPaths()` | CJK 字体路径，优先级降序 | Noto Sans CJK SC（`/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc`、`NotoSansCJKsc-Regular.otf`）、文泉驿微米黑、DroidSansFallbackFull；路径不存在会被 App 层自动跳过并回退内嵌字体 |
 | `isElevated()` | 是否已提权 | `geteuid() == 0` |
-| `restartElevated(args)` | 提权重启自身；用户拒绝返回 false | `pkexec env <显示环境> /full/path/to/bootroll <args>`（见下方 pkexec 要点）；成功后调用方会 `requestExit()` |
+| `restartElevated(args)` | 提权重启自身；用户拒绝返回 false | `pkexec env <显示环境> /full/path/to/bootroll <args>`；AppImage 内改为 `pkexec env … /bin/sh -c 'exec "$0" --appimage-extract-and-run "$@"' <外层 AppImage>`（见下方 pkexec 要点）；成功后调用方会 `requestExit()` |
 | `lastElevateError()` | 上次 `restartElevated` 失败的原因（"" = 无/不适用；Windows 恒空） | 已知类别返回英文 msgid（po 可译），未知类别返回 pkexec 原始 stderr；UI 在拒绝提示旁展示并写日志 |
-| `iniPath()` | 每用户设置文件全路径 | 保持单文件便携原则：`/proc/self/exe` 所在目录 + `bootroll.ini`（Windows 版同款语义，勿用 XDG 改变行为） |
-| `logPath()` | 日志文件全路径 | 同上目录 + `bootroll.log` |
+| `iniPath()` | 每用户设置文件全路径 | 优先 exe 目录 + `bootroll.ini`（Windows 版同款便携语义）；exe 目录不可写（AppImage 只读挂载、deb/rpm 装到 /usr/bin 的普通用户）或运行于 AppImage 运行时（`$APPDIR`/`/.mount_`）时回退 XDG：`$XDG_CONFIG_HOME` 或 `~/.config` 下 `bootroll/`（目录自动创建） |
+| `logPath()` | 日志文件全路径 | 同上规则，回退 `$XDG_STATE_HOME` 或 `~/.local/state` 下 `bootroll/`；各页自动备份目录 = 日志目录 + `/backup`，随之落位 |
 
 ### `VolumeInfo` 字段语义（IPlatform.h 内定义）
 
@@ -110,7 +110,8 @@ inline bool isUefiVarAbsent(uint32_t code); // 2 / 203 / 1168 视为不存在
 ### pkexec 提权重启要点（1.1.0 修复，原为裸 false 无诊断）
 
 - **环境重置**：pkexec 把子进程环境裁到最小集（旧 polkit 尤甚）——提权实例会丢失 `DISPLAY`/`WAYLAND_DISPLAY`，GLFW 初始化即死，重启表现为"点了没反应"。必须 `pkexec env DISPLAY=… XAUTHORITY=… WAYLAND_DISPLAY=… XDG_RUNTIME_DIR=… DBUS_SESSION_BUS_ADDRESS=… /path/bootroll` 显式回传（存在哪个传哪个）。
-- **程序所有权**：polkit 0.105（Ubuntu 22.04 地板）的 pkexec 拒绝执行非 root 所有的程序（tar.gz 解压目录/AppDir 场景必中）；polkit 122+ 已无此检查。诊断文案需引导"系统包安装或 sudo"。
+- **程序所有权**：polkit 0.105（Ubuntu 22.04 地板）的 pkexec 拒绝执行非 root 所有的程序（tar.gz 解压目录场景必中）；polkit 122+ 已无此检查。诊断文案需引导"系统包安装或 sudo"。
+- **AppImage：FUSE 挂载拒绝 root（已修复）**：AppImage 运行时以普通用户 FUSE 挂载 squashfs，而 FUSE 挂载默认只放行挂载者本人——pkexec 验密成功、切成 root 后 `execv("/tmp/.mount_*/usr/bin/bootroll")` 报 EACCES（"Error executing …: Permission denied"，中文 locale 即"权限不够"），表现为"输了密码也提权失败/闪退"。修复：AppImage 模式（`$APPDIR` 或 exe 路径含 `/.mount_`）不再把挂载内二进制交给 pkexec，而是取 `$ARGV0`（运行时导出的外层 AppImage 绝对路径，先在此进程内 realpath 防止 pkexec 把 cwd 切到 /root）重新拉起：`pkexec env … /bin/sh -c 'exec "$0" --appimage-extract-and-run "$@"' <AppImage> <args>`——/bin/sh 为 root 所有可通过 pkexec 校验；外层 AppImage 在普通文件系统上 root 可读可执行；`--appimage-extract-and-run` 全程不碰 FUSE，root 直接解包到临时目录运行。副作用：root 的解包临时目录留在 /tmp 至重启。
 - **无认证代理**：会话没有 polkit agent 时 pkexec 无法询问密码（内建 tty agent 对 GUI 进程不可用）。
 - **诊断通道**：fork 子进程 stderr 进管道（O_NONBLOCK，wait 轮询内排水防死锁），4 秒快速退出 → `classifyElevateFailure` 分类 → `lastElevateError()` 供 UI 展示 + `bootroll.log` 留证。超时视为已启动（返回 true）。
 

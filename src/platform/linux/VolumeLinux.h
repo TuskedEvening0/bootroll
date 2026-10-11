@@ -26,9 +26,15 @@ std::vector<MountEntry> parseMountInfo();
 // diskNumber/partitionNumber/isEsp best-effort via sysfs + udev db.
 std::vector<VolumeInfo> enumerateVolumesLinux();
 
-// Fill PartitionInfo driveLetter/label/fsName from the mount table (used by
+// Fill PartitionInfo driveLetter/label/fsName from the mount table, then
+// probe unmounted partitions' filesystems off `diskFd` (used by
 // DiskAccessLinux::fillDiskDetails, mirrors DiskWin's attachVolumeData).
-void attachVolumeDataLinux(DiskInfo& disk);
+// `diskFd` is the already-open whole-disk node. Unmounted partitions (ESP,
+// NTFS data disks, ...) never appear in mountinfo, so their fsName comes from
+// a boot-sector read at PartitionInfo::offsetBytes instead - plain file
+// preads on the worker thread, no new device is opened; read failures leave
+// the type unknown (best effort, like the non-root case).
+void attachVolumeDataLinux(int diskFd, const std::string& /*what*/, DiskInfo& disk);
 
 // Device node path for a "major:minor" pair ("/dev/nvme0n1p1"), "" if unknown.
 // Resolves through /sys/dev/block (no device access).

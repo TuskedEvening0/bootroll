@@ -1057,3 +1057,12 @@ msgstr "未安装 pkexec（policykit-1 / polkit 包）。"
 
 msgid "Cannot resolve the executable path (/proc/self/exe)."
 msgstr "无法解析可执行文件路径（/proc/self/exe）。"
+
+msgid "pkexec authenticated but could not execute the program (Permission denied). The binary probably lives on a FUSE or read-only mount; start it manually with sudo instead."
+msgstr "pkexec 认证成功但无法执行程序（权限不够）。程序多半位于 FUSE 或只读挂载上；请改用 sudo 手动启动。"
+
+msgid "Cannot locate the AppImage file ($ARGV0 is not set)."
+msgstr "无法定位 AppImage 文件（$ARGV0 未设置）。"
+
+msgid "Cannot resolve the AppImage path (getcwd failed)."
+msgstr "无法解析 AppImage 路径（getcwd 失败）。"

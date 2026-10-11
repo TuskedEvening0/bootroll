@@ -33,8 +33,6 @@ public:
     std::string logPath() override;
 
 private:
-    std::string exeDir() const;
-
     UefiVarsLinux m_uefi;
     std::string m_lastElevateError; // classified reason for the last failure
 };

@@ -4,6 +4,7 @@ add_executable(bootroll_tests
     test_bcd_store.cpp
     test_partition_table.cpp
     test_bootcode.cpp
+    test_filesystem_probe.cpp
     test_hexedit.cpp
     test_uefi_vars.cpp
     test_loader_presets.cpp
@@ -18,6 +19,7 @@ add_executable(bootroll_tests
     ${CMAKE_SOURCE_DIR}/src/core/uefi/LoaderPresets.cpp
     ${CMAKE_SOURCE_DIR}/src/core/fat/FatVolume.cpp
     ${CMAKE_SOURCE_DIR}/src/core/disk/PartitionTable.cpp
+    ${CMAKE_SOURCE_DIR}/src/core/disk/FileSystemProbe.cpp
     ${CMAKE_SOURCE_DIR}/src/core/bootcode/BootCode.cpp
     ${CMAKE_SOURCE_DIR}/src/core/bootcode/PbrCode.cpp
     ${CMAKE_BINARY_DIR}/generated/bootcode_nt6_mbr.cpp

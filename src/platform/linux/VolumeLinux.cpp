@@ -1,8 +1,11 @@
 #include "platform/linux/VolumeLinux.h"
 #include "platform/linux/SysFs.h"
 
+#include "core/disk/FileSystemProbe.h"
+
 #include <algorithm>
 #include <cctype>
+#include <cerrno>
 #include <cstring>
 #include <fstream>
 #include <map>
@@ -120,6 +123,51 @@ uint32_t diskNumberOfName(const std::string& blockName)
     return it == names.end() ? 0xFFFFFFFFu : uint32_t(it - names.begin());
 }
 
+// Read a partition's boot sector (+ the 64 KiB superblock area for btrfs)
+// straight off the already-open whole-disk fd and identify the filesystem.
+// Best effort: any read error simply leaves the type unknown.
+std::string probePartitionFilesystem(int fd, const PartitionInfo& p)
+{
+    if (fd < 0 || p.sizeBytes < 512) {
+        return {};
+    }
+    uint8_t boot[4096] = {};
+    const size_t want = size_t(std::min<uint64_t>(sizeof(boot), p.sizeBytes));
+    size_t got = 0;
+    while (got < want) {
+        const ssize_t n = pread(fd, boot + got, want - got,
+                                off_t(p.offsetBytes + got));
+        if (n < 0) {
+            if (errno == EINTR) {
+                continue;
+            }
+            return {};
+        }
+        if (n == 0) {
+            break; // unexpected EOF
+        }
+        got += size_t(n);
+    }
+
+    std::string name = probeFilesystemName(boot, got);
+    if (!name.empty() || got < 512) {
+        return name;
+    }
+    // btrfs keeps its superblock at partition offset 0x10040, far beyond the
+    // boot sector - only worth a read when the boot sector said "unknown".
+    if (p.sizeBytes >= 0x10048) {
+        uint8_t magic[8] = {};
+        ssize_t n;
+        do {
+            n = pread(fd, magic, sizeof(magic), off_t(p.offsetBytes + 0x10040));
+        } while (n < 0 && errno == EINTR);
+        if (n == ssize_t(sizeof(magic)) && isBtrfsSuperblock(magic, sizeof(magic))) {
+            return "BTRFS";
+        }
+    }
+    return {};
+}
+
 } // namespace
 
 std::vector<MountEntry> parseMountInfo()
@@ -172,7 +220,10 @@ std::vector<VolumeInfo> enumerateVolumesLinux()
     for (const MountEntry& m : parseMountInfo()) {
         VolumeInfo v;
         v.driveLetter = m.mountPoint; // Linux contract: mount point
-        v.fsName = upperCopy(m.fsType);
+        // ntfs3 is the kernel's NTFS driver, not a separate filesystem -
+        // report the filesystem the way Windows names it (probeFilesystemName
+        // agrees, and PbrScreen's kindForFsName keys off "ntfs").
+        v.fsName = upperCopy(m.fsType == "ntfs3" ? "ntfs" : m.fsType);
 
         struct statvfs vfs = {};
         if (statvfs(m.mountPoint.c_str(), &vfs) == 0) {
@@ -214,7 +265,7 @@ std::vector<VolumeInfo> enumerateVolumesLinux()
     return result;
 }
 
-void attachVolumeDataLinux(DiskInfo& disk)
+void attachVolumeDataLinux(int diskFd, const std::string& /*what*/, DiskInfo& disk)
 {
     const std::vector<MountEntry> mounts = parseMountInfo();
     const std::map<std::string, std::string> labels = labelMap();
@@ -246,12 +297,22 @@ void attachVolumeDataLinux(DiskInfo& disk)
                 continue;
             }
             p.driveLetter = m.mountPoint;
-            p.fsName = upperCopy(m.fsType);
-            const auto it = labels.find(dirIt->second);
-            if (it != labels.end()) {
-                p.label = it->second;
-            }
+            // Same ntfs3 -> NTFS normalization as enumerateVolumesLinux.
+            p.fsName = upperCopy(m.fsType == "ntfs3" ? "ntfs" : m.fsType);
             break;
+        }
+        // /dev/disk/by-label exists for unmounted partitions too, so labels
+        // are attached regardless of mount state.
+        const auto lblIt = labels.find(dirIt->second);
+        if (lblIt != labels.end() && p.label.empty()) {
+            p.label = lblIt->second;
+        }
+        // mountinfo only knows mounted filesystems: an unmounted partition
+        // (typical ESP, NTFS data disk) keeps fsName empty, and ntfs-3g mounts
+        // report the generic "fuseblk". Probe the boot sector off the
+        // already-open disk fd for the real type (no new device opened).
+        if (p.fsName.empty() || p.fsName == "FUSEBLK") {
+            p.fsName = probePartitionFilesystem(diskFd, p);
         }
     }
 }

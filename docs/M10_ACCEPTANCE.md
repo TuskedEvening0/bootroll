@@ -26,8 +26,8 @@
 
 ## 3. 安装模式已知行为（记录）
 
-- 便携语义：ini/log 落 exe 目录 → **deb/rpm/arch 安装后（/usr/bin）非 root 用户日志/设置静默失效**（容器 root 冒烟不受影响）。XDG 回退列为后续改进项（见 §5）。
-- AppImage：只读挂载，同上；UI 功能不受影响。
+- ~~便携语义：ini/log 落 exe 目录 → deb/rpm/arch 安装后（/usr/bin）非 root 用户日志/设置静默失效~~ **已修复**：exe 目录不可写时回退 XDG（ini → `~/.config/bootroll/`，log/backup → `~/.local/state/bootroll/`，目录自动创建）；exe 目录可写时保留便携语义不变。
+- ~~AppImage：只读挂载，ini/log/备份写入静默失败~~ **同上修复**：AppImage 运行时（`$APPDIR`）恒走 XDG 回退，自动备份目录（日志目录 + `/backup`）随之可用；提权实例（root）落在 root 的 XDG 目录。
 
 ## 4. lintian / rpmlint 残留（记录，不门禁）
 
@@ -37,7 +37,7 @@
 ## 5. 遗留事项
 
 - [ ] **图标定稿**（当前为占位资产，用户确认后替换 resources/packaging/icon/bootroll-128.png）。
-- [ ] 安装模式 XDG 回退（日志/ini：root 安装目录不可写时切 XDG state/config 目录）。
+- [x] 安装模式 XDG 回退（日志/ini：root 安装目录不可写时切 XDG state/config 目录；AppImage 恒走 XDG，提权实例落 root 的 XDG）。
 - [ ] zenity/polkit/CJK 字体 Recommends 包名全量实测（rpm Suggests 未实测不阻断安装）。
 - [ ] AppImage linuxdeploy 固定 release tag（现为 continuous，hash 已记录）。
 - [ ] deb changelog/man page（正式发行化）。
