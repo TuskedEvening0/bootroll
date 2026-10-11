@@ -9,6 +9,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <filesystem>
+#include <fstream>
 #include <map>
 #include <set>
 #include <sstream>
@@ -561,6 +562,38 @@ std::string appImagePath(std::string* error)
     return resolved;
 }
 
+// True once the pkexec child has completed authentication and execv'ed the
+// elevated instance in place: pkexec flips its real uid to the target (root)
+// *before* the exec chain (env -> sh -> runtime -> bootroll), and exec keeps
+// the pid, so /proc/<pid>/status "Uid:" real==0 means "auth done, elevated
+// instance is starting". Before authentication the real uid is still the
+// invoking user's (only the effective uid is 0 - pkexec is setuid), so this
+// cannot fire while the password dialog is merely pending.
+bool childBecameRoot(pid_t pid)
+{
+    if (pid <= 0) {
+        return false;
+    }
+    char path[64] = {};
+    std::snprintf(path, sizeof path, "/proc/%d/status", static_cast<int>(pid));
+    std::ifstream in(path);
+    if (!in) {
+        return false; // process gone; waitpid reports the exit separately
+    }
+    std::string line;
+    while (std::getline(in, line)) {
+        if (line.rfind("Uid:", 0) != 0) {
+            continue;
+        }
+        std::istringstream ls(line);
+        std::string tag;
+        unsigned realUid = 1, effective = 0, saved = 0, fs = 0;
+        return static_cast<bool>(ls >> tag >> realUid >> effective >> saved >> fs) &&
+               realUid == 0;
+    }
+    return false;
+}
+
 } // namespace
 
 bool PlatformLinux::restartElevated(const std::string& args)
@@ -661,10 +694,21 @@ bool PlatformLinux::restartElevated(const std::string& args)
     close(errPipe[1]);
     fcntl(errPipe[0], F_SETFL, fcntl(errPipe[0], F_GETFL) | O_NONBLOCK);
 
+    // Wait for a *definite* outcome instead of guessing. A fixed short
+    // deadline cannot distinguish "password dialog still pending" from "the
+    // elevated instance is running" - both keep the child alive - so treating
+    // the timeout as "launched" made the original window close under the
+    // user's hands mid-typing (reported: deterministic quit 4s after the
+    // dialog appeared). Definite outcomes only:
+    //   - child exited  -> classify (declined / no agent / exec failure / ...)
+    //   - real uid == 0 -> authentication completed, elevated instance starting
+    //   - cap reached   -> wedged pkexec; keep the app open, tell the user
+    constexpr auto kAuthWaitCap = std::chrono::minutes(2);
+
     std::string childErr;
-    const auto deadline = std::chrono::steady_clock::now() +
-                          std::chrono::seconds(4);
+    const auto deadline = std::chrono::steady_clock::now() + kAuthWaitCap;
     bool launched = false;
+    bool authStillPending = false;
     int exitCode = -1;
     for (;;) {
         char buf[512];
@@ -685,17 +729,41 @@ bool PlatformLinux::restartElevated(const std::string& args)
         if (r < 0) {
             break;
         }
+        if (childBecameRoot(pid)) {
+            launched = true; // authenticated; the elevated instance takes over
+            break;
+        }
         if (std::chrono::steady_clock::now() > deadline) {
-            launched = true; // authenticated and running (or a slow password)
+            authStillPending = true;
             break;
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
-    close(errPipe[0]);
 
     if (launched) {
+        close(errPipe[0]);
         return true;
     }
+    if (authStillPending) {
+        // The password dialog is (still) up after the cap. Keep this window
+        // usable, hand the pipe and the pid to a detached janitor so the child
+        // can neither sit as a zombie nor block on a full pipe, and tell the
+        // user what is going on. If they complete authentication afterwards,
+        // the elevated instance starts on its own.
+        std::thread([fd = errPipe[0], pid]() {
+            fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) & ~O_NONBLOCK);
+            char buf[4096];
+            while (read(fd, buf, sizeof(buf)) > 0) {
+            }
+            int status = 0;
+            waitpid(pid, &status, 0);
+            close(fd);
+        }).detach();
+        m_lastElevateError =
+            "Still waiting for authentication after two minutes. If the password dialog is still up, complete it and the elevated instance will start on its own; cancel it to keep using this window.";
+        return false;
+    }
+    close(errPipe[0]);
     if (exitCode == 0) {
         return true; // pkexec reports success
     }

@@ -83,6 +83,12 @@
     - 修复：`pkexec env` 显式回传显示/会话变量；stderr 进管道分类（root 所有权 / 无认证代理 / Not authorized / 原始 stderr）→ `lastElevateError()` 接缝 + UI 展示 + 日志留证。
     - 规矩：**跨进程子命令的失败路径必须捕获 stderr + 退出码并给出可行动的提示**；提权/对话框类 zenity/pkexec 子进程同理（confirmDialog 的 fail-closed 已是先例）。
 
+27. **提权等待禁止"固定超时 = 已启动"，要等确定信号**（2026-10-11，用户实测"密码框出现后固定 4s 闪退"）
+    - 病史：#24 的诊断机制里 wait 轮询带 4s deadline，超时即"视为已启动"返回 true → 原窗口退出。pkexec 快速失败时无害；一旦认证真的挂起等密码，子进程"活着"与"提权实例已运行"无从区分 → 4s 一到原窗口必关，且此时密码框还开着（提权修好后首次暴露，固定复现）。
+    - 信号本来就有：pkexec 认证成功后**先 `setreuid` 翻 real uid 再原地 `execv`**，pid 全程不变 → `/proc/<pid>/status` 的 `Uid:` real==0 即"认证完成、实例启动中"。旧版全在猜，读一眼 /proc 就能确定。
+    - 修复：轮询顺序 = waitpid（快速失败/取消）→ real uid 翻 0（成功交接）→ 2 分钟兜底（返回 false + 提示语；管道和 pid 交给 detached 线程排水 + 收尸，此后完成认证实例照样自启，取消则原窗口继续可用）。
+    - 规矩：**等待外部交互的轮询循环只能以"观测到的状态翻转"或"对方退出"收尾；超时只配当兜底且必须把控制权还给用户**。"活着的子进程"不是成功信号——先问"它在等什么"。
+
 25. **AppImage 提权：FUSE 挂载拒绝 root，永远别把挂载内二进制交给 pkexec**（2026-10-11，用户报 Xfce 下输完密码仍提示 `/tmp/.mount_*/usr/bin/bootroll:权限不够`）
     - 病史：AppImage 的 squashfs 是普通用户 FUSE 挂载的，而 FUSE 挂载默认只放行挂载者本人——**root 也在拒绝之列**。pkexec 验密成功、setreuid 成 root 后 `execv` 挂载内二进制得 EACCES（pkexec 源码：认证先于 exec，失败打印 `Error executing <path>: <errno 文本>`）。#24 的 env 回传全做对了也救不了这一步。
     - 修复：AppImage 模式（`$APPDIR` / 路径含 `/.mount_`）改为 `pkexec env … /bin/sh -c 'exec "$0" --appimage-extract-and-run "$@"' <外层 AppImage>`——/bin/sh root 所有可过 pkexec 校验，外层文件在普通文件系统上 root 可读，extract-and-run 全程不碰 FUSE。`$ARGV0` 必须在本进程内先转绝对路径：pkexec 会把子进程 cwd 切到 /root。

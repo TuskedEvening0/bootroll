@@ -113,7 +113,7 @@ inline bool isUefiVarAbsent(uint32_t code); // 2 / 203 / 1168 视为不存在
 - **程序所有权**：polkit 0.105（Ubuntu 22.04 地板）的 pkexec 拒绝执行非 root 所有的程序（tar.gz 解压目录场景必中）；polkit 122+ 已无此检查。诊断文案需引导"系统包安装或 sudo"。
 - **AppImage：FUSE 挂载拒绝 root（已修复）**：AppImage 运行时以普通用户 FUSE 挂载 squashfs，而 FUSE 挂载默认只放行挂载者本人——pkexec 验密成功、切成 root 后 `execv("/tmp/.mount_*/usr/bin/bootroll")` 报 EACCES（"Error executing …: Permission denied"，中文 locale 即"权限不够"），表现为"输了密码也提权失败/闪退"。修复：AppImage 模式（`$APPDIR` 或 exe 路径含 `/.mount_`）不再把挂载内二进制交给 pkexec，而是取 `$ARGV0`（运行时导出的外层 AppImage 绝对路径，先在此进程内 realpath 防止 pkexec 把 cwd 切到 /root）重新拉起：`pkexec env … /bin/sh -c 'exec "$0" --appimage-extract-and-run "$@"' <AppImage> <args>`——/bin/sh 为 root 所有可通过 pkexec 校验；外层 AppImage 在普通文件系统上 root 可读可执行；`--appimage-extract-and-run` 全程不碰 FUSE，root 直接解包到临时目录运行。副作用：root 的解包临时目录留在 /tmp 至重启。
 - **无认证代理**：会话没有 polkit agent 时 pkexec 无法询问密码（内建 tty agent 对 GUI 进程不可用）。
-- **诊断通道**：fork 子进程 stderr 进管道（O_NONBLOCK，wait 轮询内排水防死锁），4 秒快速退出 → `classifyElevateFailure` 分类 → `lastElevateError()` 供 UI 展示 + `bootroll.log` 留证。超时视为已启动（返回 true）。
+- **诊断通道**：fork 子进程 stderr 进管道（O_NONBLOCK，wait 轮询内排水防死锁）。**等待必须以"确定结果"收尾，禁止拿固定超时当"已启动"**：子进程退出 → `classifyElevateFailure` 分类；`/proc/<pid>/status` 的 real uid 翻 0（pkexec 认证成功后 setreuid 再原地 execv，pid 不变）= 认证完成、提权实例已启动 → 才返回 true 交接。密码框挂着时子进程活着且无从区分，旧版"4 秒超时视为已启动"导致输密码途中原窗口必关（用户实测固定 4s 闪退）。2 分钟兜底：返回 false + 提示语，管道与 pid 交给 detached 线程善后（防僵尸/防满管道），此后完成认证提权实例照样自启。
 
 ## 5. 平台工厂与 main.cpp
 

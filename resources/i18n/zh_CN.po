@@ -1066,3 +1066,6 @@ msgstr "无法定位 AppImage 文件（$ARGV0 未设置）。"
 
 msgid "Cannot resolve the AppImage path (getcwd failed)."
 msgstr "无法解析 AppImage 路径（getcwd 失败）。"
+
+msgid "Still waiting for authentication after two minutes. If the password dialog is still up, complete it and the elevated instance will start on its own; cancel it to keep using this window."
+msgstr "等待认证已超过两分钟。若密码框还开着，输完它提权实例就会自行启动；点取消则继续使用本窗口。"
